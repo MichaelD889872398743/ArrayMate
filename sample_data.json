@@ -1,0 +1,103 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "age": 30,
+      "city": "New York",
+      "department": "Engineering",
+      "salary": 75000
+    },
+    {
+      "id": 2,
+      "name": "Jane Smith",
+      "email": "jane.smith@example.com",
+      "age": 28,
+      "city": "Los Angeles",
+      "department": "Marketing",
+      "salary": 65000
+    },
+    {
+      "id": 3,
+      "name": "Bob Johnson",
+      "email": "bob.johnson@example.com",
+      "age": 35,
+      "city": "Chicago",
+      "department": "Sales",
+      "salary": 80000
+    }
+  ],
+  "products": [
+    {
+      "product_id": "P001",
+      "name": "Laptop",
+      "category": "Electronics",
+      "price": 999.99,
+      "stock": 50,
+      "supplier": "TechCorp"
+    },
+    {
+      "product_id": "P002",
+      "name": "Mouse",
+      "category": "Electronics",
+      "price": 29.99,
+      "stock": 200,
+      "supplier": "TechCorp"
+    },
+    {
+      "product_id": "P003",
+      "name": "Desk Chair",
+      "category": "Furniture",
+      "price": 199.99,
+      "stock": 25,
+      "supplier": "OfficeMax"
+    }
+  ],
+  "orders": [
+    {
+      "order_id": "ORD001",
+      "customer_id": 1,
+      "order_date": "2024-01-15",
+      "total_amount": 1029.98,
+      "status": "Completed",
+      "items": [
+        {"product_id": "P001", "quantity": 1, "price": 999.99},
+        {"product_id": "P002", "quantity": 1, "price": 29.99}
+      ]
+    },
+    {
+      "order_id": "ORD002",
+      "customer_id": 2,
+      "order_date": "2024-01-16",
+      "total_amount": 199.99,
+      "status": "Pending",
+      "items": [
+        {"product_id": "P003", "quantity": 1, "price": 199.99}
+      ]
+    }
+  ],
+  "departments": [
+    {
+      "dept_id": "D001",
+      "name": "Engineering",
+      "manager": "John Doe",
+      "employee_count": 15,
+      "budget": 1500000
+    },
+    {
+      "dept_id": "D002",
+      "name": "Marketing",
+      "manager": "Jane Smith",
+      "employee_count": 8,
+      "budget": 800000
+    },
+    {
+      "dept_id": "D003",
+      "name": "Sales",
+      "manager": "Bob Johnson",
+      "employee_count": 12,
+      "budget": 1200000
+    }
+  ]
+}
