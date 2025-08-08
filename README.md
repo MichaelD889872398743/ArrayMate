@@ -1,6 +1,6 @@
-# JSON to Excel Converter
+# JSON Data Converter
 
-A GUI application that converts JSON arrays to Excel files. The application allows users to select a JSON file, choose which array to convert, and save the result as an Excel file with keys as columns.
+A GUI application that converts JSON arrays to multiple formats (Excel, CSV, JSON). The application allows users to select a JSON file or paste JSON directly, choose which array to convert, and save the result in various formats with keys as columns.
 
 **Author:** Michael Dehne  
 **License:** MIT License  
@@ -8,11 +8,11 @@ A GUI application that converts JSON arrays to Excel files. The application allo
 
 ## Features
 
-- **File Selection**: Browse and select JSON files
+- **Multiple JSON Sources**: Browse JSON files OR paste JSON directly (e.g., from Postman, API responses)
 - **Array Detection**: Automatically finds all arrays in the JSON structure
-- **Array Selection**: Choose which array to convert to Excel
-- **Excel Export**: Convert selected arrays to Excel format with keys as columns
-- **Auto-Open**: Automatically opens the converted Excel file for immediate review
+- **Array Selection**: Choose which array to convert
+- **Multiple Output Formats**: Export to Excel (.xlsx), CSV (.csv), or JSON (.json)
+- **Auto-Open**: Automatically opens converted files or shows file location
 - **User-Friendly GUI**: Simple and intuitive interface
 
 ## Installation
@@ -31,13 +31,16 @@ pip install -r requirements.txt
 python json_to_excel.py
 ```
 
-2. **Step 1**: Click "Browse" to select a JSON file
+2. **Step 1**: Choose JSON source:
+   - **Option A**: Click "Browse" to select a JSON file
+   - **Option B**: Click "Open JSON Input" to paste JSON directly (e.g., from Postman)
 3. **Step 2**: Choose which array to convert from the dropdown
 4. **Step 3**: Set the output location:
+   - Select output format (Excel, CSV, or JSON)
    - Click "Browse" to select the save folder
    - Enter a filename (auto-generated based on selected array)
-5. **Step 4**: Click "Convert to Excel" to process the conversion
-6. **Auto-Open**: The Excel file automatically opens in your default spreadsheet application
+5. **Step 4**: Click "Convert to File" to process the conversion
+6. **Auto-Open**: Files automatically open or show file location
 
 ## Requirements
 
@@ -48,13 +51,14 @@ python json_to_excel.py
 
 ## How it Works
 
-1. **JSON Parsing**: The script loads and parses the JSON file
+1. **JSON Input**: Load JSON from file or paste directly from clipboard
 2. **Array Detection**: It recursively searches for all arrays in the JSON structure
 3. **Array Selection**: Users can choose which array to convert
-4. **Output Configuration**: Users set the save folder and filename before conversion
-5. **Excel Conversion**: The selected array is converted to a pandas DataFrame and saved as an Excel file
-6. **Column Mapping**: Object keys become Excel columns
-7. **Auto-Open**: The converted Excel file automatically opens for immediate review
+4. **Format Selection**: Choose output format (Excel, CSV, or JSON)
+5. **Output Configuration**: Users set the save folder and filename before conversion
+6. **Data Conversion**: The selected array is converted to a pandas DataFrame
+7. **File Export**: Save in the chosen format with proper formatting
+8. **Auto-Open**: Files automatically open or show file location
 
 ## Example JSON Structure
 
