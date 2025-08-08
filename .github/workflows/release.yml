@@ -1,0 +1,94 @@
+name: Build and Release ArrayMate
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Build executable
+      run: |
+        python build_exe.py
+        
+    - name: Create release package
+      run: |
+        # Create release directory
+        mkdir -p release
+        
+        # Copy executable
+        copy dist\ArrayMate.exe release\
+        
+        # Copy additional files
+        copy sample_data.json release\
+        copy README.md release\
+        copy LICENSE release\
+        copy requirements.txt release\
+        
+        # Create zip file
+        powershell Compress-Archive -Path release\* -DestinationPath ArrayMate-${{ github.ref_name }}-Windows.zip
+        
+    - name: Upload release assets
+      uses: actions/upload-artifact@v3
+      with:
+        name: ArrayMate-Release
+        path: |
+          ArrayMate-${{ github.ref_name }}-Windows.zip
+          release/ArrayMate.exe
+          
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ArrayMate-${{ github.ref_name }}-Windows.zip
+        body: |
+          ## ArrayMate v${{ github.ref_name }}
+          
+          ### What's New
+          - Initial release of ArrayMate
+          - GUI application for converting JSON arrays to multiple formats
+          - Support for Excel, CSV, and JSON output formats
+          - Direct JSON input and file selection
+          - Auto-open converted files
+          
+          ### Installation
+          1. Download the zip file
+          2. Extract to a folder
+          3. Run `ArrayMate.exe`
+          
+          ### Features
+          - **Multiple JSON Sources**: Browse JSON files OR paste JSON directly
+          - **Array Detection**: Automatically finds all arrays in the JSON structure
+          - **Multiple Output Formats**: Export to Excel (.xlsx), CSV (.csv), or JSON (.json)
+          - **Auto-Open**: Automatically opens converted files
+          - **User-Friendly GUI**: Simple and intuitive interface
+          
+          ### System Requirements
+          - Windows 10 or later
+          - No additional software required (standalone executable)
+          
+          ### License
+          MIT License - see LICENSE file for details
+          
+          ### Author
+          Michael Dehne - [GitHub Profile](https://github.com/micdehne)
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

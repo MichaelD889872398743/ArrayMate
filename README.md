@@ -17,6 +17,13 @@ A GUI application that converts JSON arrays to multiple formats (Excel, CSV, JSO
 
 ## Installation
 
+### Option 1: Download Executable (Recommended)
+1. Go to the [Releases](https://github.com/micdehne/array-mate/releases) page
+2. Download the latest `ArrayMate-v*.zip` file
+3. Extract the zip file
+4. Run `ArrayMate.exe` (no installation required)
+
+### Option 2: Run from Source
 1. Make sure you have Python 3.7+ installed
 2. Install the required dependencies:
 
@@ -26,6 +33,10 @@ pip install -r requirements.txt
 
 ## Usage
 
+### From Executable
+1. Double-click `ArrayMate.exe` to start the application
+
+### From Source
 1. Run the script:
 ```bash
 python array_mate.py
@@ -44,6 +55,11 @@ python array_mate.py
 
 ## Requirements
 
+### For Executable
+- Windows 10 or later
+- No additional software required
+
+### For Source Code
 - Python 3.7+
 - pandas
 - openpyxl
@@ -93,6 +109,27 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Building from Source
+
+If you want to build your own executable:
+
+### Quick Build (Windows)
+```bash
+# Option 1: Double-click
+build.bat
+
+# Option 2: PowerShell
+.\build.ps1
+
+# Option 3: Python script
+python build_exe.py
+```
+
+### Manual Build
+1. Install PyInstaller: `pip install pyinstaller`
+2. Run: `python build_exe.py`
+3. Check the `release/` folder for the executable
 
 ## Author
 
