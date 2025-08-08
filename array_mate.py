@@ -1,5 +1,5 @@
 """
-JSON Data Converter
+ArrayMate
 A GUI application that converts JSON arrays to multiple formats (Excel, CSV, JSON).
 
 Author: Michael Dehne
@@ -17,26 +17,48 @@ import os
 import subprocess
 import platform
 from pathlib import Path
-import re
+from typing import List, Dict, Any, Optional, Union
 
-class JsonToExcelConverter:
-    def __init__(self, root):
+
+class ArrayMate:
+    """
+    A GUI application for converting JSON arrays to multiple formats.
+    
+    This class provides a complete GUI interface for loading JSON data,
+    selecting arrays, and converting them to Excel, CSV, or JSON formats.
+    """
+    
+    # Constants for UI configuration
+    WINDOW_WIDTH = 800
+    WINDOW_HEIGHT = 700
+    DEFAULT_FONT = ("Arial", 10)
+    TITLE_FONT = ("Arial", 16, "bold")
+    CODE_FONT = ("Consolas", 10)
+    
+    def __init__(self, root: tk.Tk) -> None:
+        """
+        Initialize the ArrayMate application.
+        
+        Args:
+            root: The main tkinter window
+        """
         self.root = root
-        self.root.title("JSON Data Converter")
-        self.root.geometry("800x700")
+        self.root.title("ArrayMate")
+        self.root.geometry(f"{self.WINDOW_WIDTH}x{self.WINDOW_HEIGHT}")
         self.root.resizable(True, True)
         
-        # Variables
+        # Initialize variables
         self.json_file_path = tk.StringVar()
         self.selected_array_key = tk.StringVar()
         self.output_folder = tk.StringVar()
         self.output_filename = tk.StringVar()
-        self.json_data = None
-        self.array_keys = []
+        self.json_data: Optional[Dict[str, Any]] = None
+        self.array_keys: List[str] = []
         
         self.setup_ui()
-        
-    def setup_ui(self):
+    
+    def setup_ui(self) -> None:
+        """Set up the user interface with all components."""
         # Main frame
         main_frame = ttk.Frame(self.root, padding="20")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -47,12 +69,28 @@ class JsonToExcelConverter:
         main_frame.columnconfigure(1, weight=1)
         
         # Title
-        title_label = ttk.Label(main_frame, text="JSON Data Converter", 
-                               font=("Arial", 16, "bold"))
+        title_label = ttk.Label(main_frame, text="ArrayMate", 
+                               font=self.TITLE_FONT)
         title_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
         
         # File selection section
-        file_frame = ttk.LabelFrame(main_frame, text="Step 1: Select JSON Source", padding="10")
+        self._create_file_selection_section(main_frame)
+        
+        # Array selection section
+        self._create_array_selection_section(main_frame)
+        
+        # Output settings section
+        self._create_output_settings_section(main_frame)
+        
+        # Process buttons
+        self._create_process_buttons(main_frame)
+        
+        # Status section
+        self._create_status_section(main_frame)
+    
+    def _create_file_selection_section(self, parent: ttk.Frame) -> None:
+        """Create the file selection section of the UI."""
+        file_frame = ttk.LabelFrame(parent, text="Step 1: Select JSON Source", padding="10")
         file_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
         file_frame.columnconfigure(1, weight=1)
         
@@ -64,9 +102,10 @@ class JsonToExcelConverter:
         # Direct JSON input option
         ttk.Label(file_frame, text="OR Paste JSON:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
         ttk.Button(file_frame, text="Open JSON Input", command=self.open_json_input_window).grid(row=1, column=1, sticky=tk.W, padx=(0, 10), pady=(10, 0))
-        
-        # Array selection section
-        array_frame = ttk.LabelFrame(main_frame, text="Step 2: Select Array to Convert", padding="10")
+    
+    def _create_array_selection_section(self, parent: ttk.Frame) -> None:
+        """Create the array selection section of the UI."""
+        array_frame = ttk.LabelFrame(parent, text="Step 2: Select Array to Convert", padding="10")
         array_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
         array_frame.columnconfigure(0, weight=1)
         
@@ -81,15 +120,16 @@ class JsonToExcelConverter:
         # Array info label
         self.array_info_label = ttk.Label(array_frame, text="No JSON file loaded")
         self.array_info_label.grid(row=2, column=0, sticky=tk.W)
-        
-        # Output settings section
-        output_frame = ttk.LabelFrame(main_frame, text="Step 3: Set Output Location", padding="10")
+    
+    def _create_output_settings_section(self, parent: ttk.Frame) -> None:
+        """Create the output settings section of the UI."""
+        output_frame = ttk.LabelFrame(parent, text="Step 3: Set Output Location", padding="10")
         output_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
         output_frame.columnconfigure(1, weight=1)
         
         # Output format selection
         ttk.Label(output_frame, text="Output Format:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
-        self.output_format = tk.StringVar(value="excel")
+        self.output_format = tk.StringVar(value="Excel (.xlsx)")
         format_combobox = ttk.Combobox(output_frame, textvariable=self.output_format, 
                                       values=["Excel (.xlsx)", "CSV (.csv)", "JSON (.json)"], 
                                       state="readonly", width=15)
@@ -106,9 +146,10 @@ class JsonToExcelConverter:
         ttk.Entry(output_frame, textvariable=self.output_filename, width=40).grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(10, 0))
         self.extension_label = ttk.Label(output_frame, text=".xlsx")
         self.extension_label.grid(row=2, column=2, sticky=tk.W, pady=(10, 0))
-        
-        # Process buttons frame
-        button_frame = ttk.Frame(main_frame)
+    
+    def _create_process_buttons(self, parent: ttk.Frame) -> None:
+        """Create the process buttons section."""
+        button_frame = ttk.Frame(parent)
         button_frame.grid(row=4, column=0, columnspan=3, pady=20)
         
         # Process button
@@ -120,19 +161,20 @@ class JsonToExcelConverter:
         self.clear_button = ttk.Button(button_frame, text="Clear All", 
                                      command=self.clear_all)
         self.clear_button.pack(side=tk.LEFT)
-        
-        # Status section
-        status_frame = ttk.LabelFrame(main_frame, text="Status & Events", padding="10")
+    
+    def _create_status_section(self, parent: ttk.Frame) -> None:
+        """Create the status section of the UI."""
+        status_frame = ttk.LabelFrame(parent, text="Status & Events", padding="10")
         status_frame.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
         status_frame.columnconfigure(0, weight=1)
         
         # Status label with better styling
-        self.status_label = ttk.Label(status_frame, text="Ready to convert JSON data", 
-                                     font=("Arial", 10), foreground="green")
+        self.status_label = ttk.Label(status_frame, text="Ready to convert JSON arrays", 
+                                     font=self.DEFAULT_FONT, foreground="green")
         self.status_label.grid(row=0, column=0, sticky=tk.W)
-        
-    def clear_all(self):
-        """Clear all inputs and reset the application state"""
+    
+    def clear_all(self) -> None:
+        """Clear all inputs and reset the application state."""
         # Clear file path
         self.json_file_path.set("")
         
@@ -152,7 +194,7 @@ class JsonToExcelConverter:
         # Update UI
         self.array_info_label['text'] = "No JSON file loaded"
         self.process_button['state'] = 'disabled'
-        self.status_label['text'] = "Ready to convert JSON data"
+        self.status_label['text'] = "Ready to convert JSON arrays"
         self.status_label['foreground'] = "green"
         
         # Reset format to default
@@ -160,8 +202,8 @@ class JsonToExcelConverter:
         self.extension_label['text'] = ".xlsx"
         self.process_button['text'] = "Convert to File"
     
-    def browse_json_file(self):
-        """Open file dialog to select JSON file"""
+    def browse_json_file(self) -> None:
+        """Open file dialog to select JSON file."""
         file_path = filedialog.askopenfilename(
             title="Select JSON File",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
@@ -171,8 +213,8 @@ class JsonToExcelConverter:
             self.json_file_path.set(file_path)
             self.load_json_file()
     
-    def open_json_input_window(self):
-        """Open a window for direct JSON input"""
+    def open_json_input_window(self) -> None:
+        """Open a window for direct JSON input."""
         self.json_input_window = tk.Toplevel(self.root)
         self.json_input_window.title("Paste JSON Data")
         self.json_input_window.geometry("600x400")
@@ -185,11 +227,11 @@ class JsonToExcelConverter:
         # Instructions
         instruction_label = ttk.Label(self.json_input_window, 
                                     text="Paste your JSON data below (e.g., from Postman, API response, etc.):",
-                                    font=("Arial", 10, "bold"))
+                                    font=self.DEFAULT_FONT)
         instruction_label.grid(row=0, column=0, sticky=tk.W, padx=10, pady=(10, 5))
         
         # Text area for JSON input
-        self.json_text = tk.Text(self.json_input_window, wrap=tk.WORD, font=("Consolas", 10))
+        self.json_text = tk.Text(self.json_input_window, wrap=tk.WORD, font=self.CODE_FONT)
         self.json_text.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=10, pady=(0, 10))
         
         # Scrollbar for text area
@@ -208,8 +250,8 @@ class JsonToExcelConverter:
         # Focus on text area
         self.json_text.focus()
     
-    def load_json_from_text(self):
-        """Load JSON from the text input"""
+    def load_json_from_text(self) -> None:
+        """Load JSON from the text input."""
         json_text = self.json_text.get("1.0", tk.END).strip()
         
         if not json_text:
@@ -251,12 +293,12 @@ class JsonToExcelConverter:
         except Exception as e:
             messagebox.showerror("Error", f"Error parsing JSON: {str(e)}")
     
-    def clear_json_text(self):
-        """Clear the JSON text area"""
+    def clear_json_text(self) -> None:
+        """Clear the JSON text area."""
         self.json_text.delete("1.0", tk.END)
     
-    def on_format_selected(self, event=None):
-        """Handle output format selection"""
+    def on_format_selected(self, event: Optional[tk.Event] = None) -> None:
+        """Handle output format selection."""
         format_text = self.output_format.get()
         
         if "Excel" in format_text:
@@ -270,8 +312,8 @@ class JsonToExcelConverter:
         format_name = format_text.split(" ")[0]
         self.process_button['text'] = f"Convert to {format_name}"
     
-    def browse_output_folder(self):
-        """Open folder dialog to select output directory"""
+    def browse_output_folder(self) -> None:
+        """Open folder dialog to select output directory."""
         folder_path = filedialog.askdirectory(
             title="Select Output Folder"
         )
@@ -283,8 +325,8 @@ class JsonToExcelConverter:
                 suggested_name = f"{self.selected_array_key.get()}_data"
                 self.output_filename.set(suggested_name)
     
-    def load_json_file(self):
-        """Load and parse the selected JSON file"""
+    def load_json_file(self) -> None:
+        """Load and parse the selected JSON file."""
         try:
             with open(self.json_file_path.get(), 'r', encoding='utf-8') as file:
                 self.json_data = json.load(file)
@@ -321,8 +363,17 @@ class JsonToExcelConverter:
             self.status_label['text'] = "❌ Error loading file"
             self.status_label['foreground'] = "red"
     
-    def find_arrays(self, data, path=""):
-        """Recursively find all arrays in the JSON data"""
+    def find_arrays(self, data: Union[Dict[str, Any], List[Any]], path: str = "") -> List[str]:
+        """
+        Recursively find all arrays in the JSON data.
+        
+        Args:
+            data: The JSON data to search
+            path: The current path in the JSON structure
+            
+        Returns:
+            List of array paths found in the JSON
+        """
         arrays = []
         
         if isinstance(data, dict):
@@ -342,8 +393,17 @@ class JsonToExcelConverter:
         
         return arrays
     
-    def get_array_data(self, data, array_path):
-        """Get the array data for a given path"""
+    def get_array_data(self, data: Union[Dict[str, Any], List[Any]], array_path: str) -> Optional[List[Any]]:
+        """
+        Get the array data for a given path.
+        
+        Args:
+            data: The JSON data
+            array_path: The path to the array
+            
+        Returns:
+            The array data if found, None otherwise
+        """
         if array_path == "root":
             return data
         
@@ -358,8 +418,14 @@ class JsonToExcelConverter:
         
         return current if isinstance(current, list) else None
     
-    def update_array_info(self, array_key, array_data):
-        """Update the info label with array details"""
+    def update_array_info(self, array_key: str, array_data: List[Any]) -> None:
+        """
+        Update the info label with array details.
+        
+        Args:
+            array_key: The key/name of the array
+            array_data: The array data
+        """
         if array_data and len(array_data) > 0:
             sample_item = array_data[0]
             if isinstance(sample_item, dict):
@@ -370,8 +436,8 @@ class JsonToExcelConverter:
         else:
             self.array_info_label['text'] = f"Array '{array_key}': Empty array"
     
-    def on_array_selected(self, event=None):
-        """Handle array selection change"""
+    def on_array_selected(self, event: Optional[tk.Event] = None) -> None:
+        """Handle array selection change."""
         selected_key = self.selected_array_key.get()
         if selected_key and self.json_data:
             array_data = self.get_array_data(self.json_data, selected_key)
@@ -382,8 +448,8 @@ class JsonToExcelConverter:
                 suggested_name = f"{selected_key}_data"
                 self.output_filename.set(suggested_name)
     
-    def convert_to_file(self):
-        """Convert the selected array to the chosen format"""
+    def convert_to_file(self) -> None:
+        """Convert the selected array to the chosen format."""
         if not self.selected_array_key.get():
             messagebox.showerror("Error", "Please select an array to convert")
             return
@@ -475,8 +541,8 @@ class JsonToExcelConverter:
             self.status_label['text'] = f"❌ Error creating {format_type} file"
             self.status_label['foreground'] = "red"
     
-    def open_excel_file(self, file_path):
-        """Open the Excel file with the default application"""
+    def open_excel_file(self, file_path: str) -> None:
+        """Open the Excel file with the default application."""
         try:
             system = platform.system()
             
@@ -499,8 +565,8 @@ class JsonToExcelConverter:
             self.status_label['text'] = f"⚠ Excel file saved (could not open): {os.path.basename(file_path)}"
             self.status_label['foreground'] = "orange"
     
-    def open_csv_file(self, file_path):
-        """Open the CSV file with the default application"""
+    def open_csv_file(self, file_path: str) -> None:
+        """Open the CSV file with the default application."""
         try:
             system = platform.system()
             
@@ -523,8 +589,8 @@ class JsonToExcelConverter:
             self.status_label['text'] = f"⚠ CSV file saved (could not open): {os.path.basename(file_path)}"
             self.status_label['foreground'] = "orange"
     
-    def open_json_file(self, file_path):
-        """Open the JSON file with the default application"""
+    def open_json_file(self, file_path: str) -> None:
+        """Open the JSON file with the default application."""
         try:
             system = platform.system()
             
@@ -547,8 +613,8 @@ class JsonToExcelConverter:
             self.status_label['text'] = f"⚠ JSON file saved (could not open): {os.path.basename(file_path)}"
             self.status_label['foreground'] = "orange"
     
-    def open_file_location(self, file_path):
-        """Open the file location in file explorer"""
+    def open_file_location(self, file_path: str) -> None:
+        """Open the file location in file explorer."""
         try:
             system = platform.system()
             
@@ -574,10 +640,13 @@ class JsonToExcelConverter:
             self.status_label['text'] = f"✓ File saved: {os.path.basename(file_path)}"
             self.status_label['foreground'] = "green"
 
-def main():
+
+def main() -> None:
+    """Main entry point for the application."""
     root = tk.Tk()
-    app = JsonToExcelConverter(root)
+    app = ArrayMate(root)
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()

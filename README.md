@@ -1,4 +1,4 @@
-# JSON Data Converter
+# ArrayMate
 
 A GUI application that converts JSON arrays to multiple formats (Excel, CSV, JSON). The application allows users to select a JSON file or paste JSON directly, choose which array to convert, and save the result in various formats with keys as columns.
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 1. Run the script:
 ```bash
-python json_to_excel.py
+python array_mate.py
 ```
 
 2. **Step 1**: Choose JSON source:
