@@ -102,6 +102,38 @@ The script can handle various JSON structures:
 
 In this example, the script would detect two arrays: "users" and "products", and you could choose which one to convert to Excel.
 
+## Selecting Arrays for Export
+
+When you load a JSON file, **ArrayMate** scans the entire structure and lists all arrays it finds, including those nested inside objects or other arrays.  
+The array paths use a notation like:
+
+- `orders` — a top-level array called "orders"
+- `orders[0].items` — the "items" array inside the first object of the "orders" array
+- `orders[1].items` — the "items" array inside the second object of the "orders" array
+
+This notation allows you to select **any array**, even if it is deeply nested.  
+The numbers in brackets (e.g., `[0]`, `[1]`) refer to the index of the object in the parent array.
+
+**Example:**  
+If your JSON looks like this:
+```json
+{
+  "orders": [
+    { "id": 1, "items": [ ... ] },
+    { "id": 2, "items": [ ... ] }
+  ]
+}
+```
+You will see options like:
+- `orders` (the full list of orders)
+- `orders[0].items` (the items for the first order)
+- `orders[1].items` (the items for the second order)
+
+Select the array path you want to export, and ArrayMate will convert just that array to your chosen format.
+
+> **Note:**  
+> This approach is useful for advanced users who want to extract specific nested arrays. If you want to merge or flatten arrays across multiple objects, consider exporting the top-level array or use the "merge array" feature (coming soon).
+
 ## Notes
 
 - The script only converts arrays that contain objects (dictionaries)

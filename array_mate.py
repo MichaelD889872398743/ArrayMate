@@ -18,6 +18,7 @@ import subprocess
 import platform
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
+import re
 
 
 class ArrayMate:
@@ -365,57 +366,56 @@ class ArrayMate:
     
     def find_arrays(self, data: Union[Dict[str, Any], List[Any]], path: str = "") -> List[str]:
         """
-        Recursively find all arrays in the JSON data.
-        
-        Args:
-            data: The JSON data to search
-            path: The current path in the JSON structure
-            
-        Returns:
-            List of array paths found in the JSON
+        Recursively find all arrays in the JSON data, including nested arrays inside objects or arrays.
+        Only returns paths that actually point to arrays.
         """
         arrays = []
-        
+
         if isinstance(data, dict):
             for key, value in data.items():
                 current_path = f"{path}.{key}" if path else key
-                if isinstance(value, list) and value:
+                if isinstance(value, list):
                     arrays.append(current_path)
-                elif isinstance(value, (dict, list)):
+                    # Recursively check each item in the list for nested arrays
+                    for idx, item in enumerate(value):
+                        arrays.extend(self.find_arrays(item, f"{current_path}[{idx}]"))
+                elif isinstance(value, dict):
                     arrays.extend(self.find_arrays(value, current_path))
-        
-        elif isinstance(data, list) and data:
-            # If the root is an array, add it
+
+        elif isinstance(data, list):
+            # Only add the root if it's a list and not inside another list
             if not path:
                 arrays.append("root")
-            else:
-                arrays.append(path)
-        
+            for idx, item in enumerate(data):
+                # Only recurse if the item is a dict or list (not a primitive)
+                if isinstance(item, (dict, list)):
+                    arrays.extend(self.find_arrays(item, f"{path}[{idx}]" if path else f"[{idx}]"))
+
         return arrays
     
     def get_array_data(self, data: Union[Dict[str, Any], List[Any]], array_path: str) -> Optional[List[Any]]:
         """
-        Get the array data for a given path.
-        
-        Args:
-            data: The JSON data
-            array_path: The path to the array
-            
-        Returns:
-            The array data if found, None otherwise
+        Get the array data for a given path, supporting dot and bracket notation.
+        E.g., 'orders[0].items' or 'orders[1].lines'
         """
         if array_path == "root":
-            return data
-        
-        keys = array_path.split('.')
+            return data if isinstance(data, list) else None
+
+        # Split path into parts, handling both dots and [index]
+        parts = re.findall(r'\w+|\[\d+\]', array_path)
         current = data
-        
-        for key in keys:
-            if isinstance(current, dict) and key in current:
-                current = current[key]
+        for part in parts:
+            if re.fullmatch(r'\[\d+\]', part):
+                idx = int(part[1:-1])
+                if isinstance(current, list) and 0 <= idx < len(current):
+                    current = current[idx]
+                else:
+                    return None
             else:
-                return None
-        
+                if isinstance(current, dict) and part in current:
+                    current = current[part]
+                else:
+                    return None
         return current if isinstance(current, list) else None
     
     def update_array_info(self, array_key: str, array_data: List[Any]) -> None:
