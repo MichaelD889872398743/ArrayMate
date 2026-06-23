@@ -12,13 +12,13 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="array-mate",
-    version="1.0.0",
+    version="1.0.10",
     author="Michael Dehne",
     author_email="",  # Add your email if desired
     description="A GUI application that converts JSON arrays to multiple formats (Excel, CSV, JSON)",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/micdehne/array-mate",
+    url="https://github.com/MichaelD889872398743/array-mate",
     py_modules=["array_mate"],
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -44,7 +44,7 @@ setup(
     },
     keywords="json, excel, csv, converter, gui, tkinter, pandas",
     project_urls={
-        "Bug Reports": "https://github.com/micdehne/array-mate/issues",
-        "Source": "https://github.com/micdehne/array-mate",
+        "Bug Reports": "https://github.com/MichaelD889872398743/array-mate/issues",
+        "Source": "https://github.com/MichaelD889872398743/array-mate",
     },
 )

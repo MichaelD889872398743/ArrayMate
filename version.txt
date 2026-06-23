@@ -16,11 +16,11 @@ VSVersionInfo(
       StringTable('040904B0', [
         StringStruct('CompanyName', 'Michael Dehne'),
         StringStruct('FileDescription', 'ArrayMate - JSON to Table Tool'),
-        StringStruct('FileVersion', '1.0.0'),
+        StringStruct('FileVersion', '1.0.10'),
         StringStruct('InternalName', 'ArrayMate'),
         StringStruct('OriginalFilename', 'ArrayMate.exe'),
         StringStruct('ProductName', 'ArrayMate'),
-        StringStruct('ProductVersion', '1.0.0')
+        StringStruct('ProductVersion', '1.0.10')
       ])
     ]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])

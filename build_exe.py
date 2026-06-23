@@ -105,7 +105,7 @@ def create_zip_package():
     print("Creating zip package...")
     
     release_dir = Path("release")
-    zip_name = "ArrayMate-v1.0.0-Windows.zip"
+    zip_name = "ArrayMate-v1.0.10-Windows.zip"
     
     with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for file_path in release_dir.rglob("*"):
