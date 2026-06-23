@@ -4,7 +4,7 @@ A GUI application that converts JSON arrays to multiple formats (Excel, CSV, JSO
 
 **Author:** Michael Dehne  
 **License:** MIT License  
-**Version:** 1.0.0
+**Version:** 1.0.10
 
 ## Features
 
