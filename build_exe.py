@@ -38,7 +38,7 @@ def build_executable():
         "--hidden-import=tkinter.ttk",
         "--hidden-import=tkinter.filedialog",
         "--hidden-import=tkinter.messagebox",
-        "array_mate.py"
+        "app.py"
     ]
     
     # Remove icon if it doesn't exist
@@ -165,7 +165,7 @@ def main():
     print("\n Next steps:")
     print("1. Test the executable: release/ArrayMate.exe")
     print("2. Upload the zip file to GitHub releases")
-    print("3. Tag the release with v1.0.0")
+    print("3. Tag the release with the current version")
     
     return True
 

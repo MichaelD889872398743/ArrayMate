@@ -19,7 +19,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/MichaelD889872398743/array-mate",
-    py_modules=["array_mate"],
+    packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -39,7 +39,7 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "array-mate=array_mate:main",
+            "array-mate=arraymate.desktop:main",
         ],
     },
     keywords="json, excel, csv, converter, gui, tkinter, pandas",

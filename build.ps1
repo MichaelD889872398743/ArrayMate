@@ -15,7 +15,7 @@ try {
 }
 
 # Check if required files exist
-$requiredFiles = @("array_mate.py", "requirements.txt", "sample_data.json")
+$requiredFiles = @("app.py", "requirements.txt", "sample_data.json")
 foreach ($file in $requiredFiles) {
     if (Test-Path $file) {
         Write-Host "✓ Found $file" -ForegroundColor Green
@@ -50,7 +50,7 @@ try {
         Write-Host "`n📋 Next steps:" -ForegroundColor Cyan
         Write-Host "1. Test the executable: release\ArrayMate.exe"
         Write-Host "2. Upload the zip file to GitHub releases"
-        Write-Host "3. Tag the release with v1.0.0"
+        Write-Host "3. Tag the release with the current version"
         
     } else {
         Write-Host "`n❌ Build failed with exit code $LASTEXITCODE" -ForegroundColor Red

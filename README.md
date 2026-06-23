@@ -46,7 +46,7 @@ pip install -r requirements.txt
 ### From Source
 1. Run the script:
 ```bash
-python array_mate.py
+python app.py
 ```
 
 2. **Step 1**: Choose JSON source:

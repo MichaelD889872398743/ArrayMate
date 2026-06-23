@@ -62,8 +62,28 @@
       "total_amount": 1029.98,
       "status": "Completed",
       "items": [
-        {"product_id": "P001", "quantity": 1, "price": 999.99},
-        {"product_id": "P002", "quantity": 1, "price": 29.99}
+        {
+          "product_id": "P001",
+          "quantity": 1,
+          "price": 999.99,
+          "descriptions": [
+            {
+              "de": "Leistungsstarker mobiler Rechner",
+              "en": "Powerful mobile computer"
+            }
+          ]
+        },
+        {
+          "product_id": "P002",
+          "quantity": 1,
+          "price": 29.99,
+          "descriptions": [
+            {
+              "de": "Kompakte kabellose Maus",
+              "en": "Compact wireless mouse"
+            }
+          ]
+        }
       ]
     },
     {
@@ -73,7 +93,17 @@
       "total_amount": 199.99,
       "status": "Pending",
       "items": [
-        {"product_id": "P003", "quantity": 1, "price": 199.99}
+        {
+          "product_id": "P003",
+          "quantity": 1,
+          "price": 199.99,
+          "descriptions": [
+            {
+              "de": "Ergonomischer bequemer Stuhl",
+              "en": "Ergonomic comfortable chair"
+            }
+          ]
+        }
       ]
     }
   ],
