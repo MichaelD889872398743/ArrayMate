@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import json
 import os
 import platform
@@ -10,7 +11,16 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Optional
 
-from arraymate.core import ArrayCandidate, ArrayMateCoreError, TablePreview, build_table_preview, get_output_format
+from arraymate.core import (
+    ArrayCandidate,
+    ArrayMateCoreError,
+    ColumnTransform,
+    TablePreview,
+    TableTransformOptions,
+    build_table_preview,
+    get_output_format,
+    infer_column_transform_types,
+)
 from arraymate.service import ArrayMateService, LoadResult
 
 
@@ -18,8 +28,8 @@ class ArrayMate:
     """Desktop UI for converting JSON arrays to table files."""
 
     NO_UNFOLD_LABEL = "Keep selected table"
-    WINDOW_WIDTH = 1100
-    WINDOW_HEIGHT = 760
+    WINDOW_WIDTH = 1000
+    WINDOW_HEIGHT = 660
     DEFAULT_FONT = ("Arial", 10)
     TITLE_FONT = ("Arial", 16, "bold")
     CODE_FONT = ("Consolas", 10)
@@ -36,6 +46,12 @@ class ArrayMate:
         self.array_keys: list[str] = []
         self.candidate_by_path: dict[str, ArrayCandidate] = {}
         self.effective_candidate_key = ""
+        self.auto_filename = True
+        self.column_transforms: dict[str, ColumnTransform] = {}
+        self.current_preview_columns: list[str] = []
+        self.advanced_window: Optional[tk.Toplevel] = None
+        self.advanced_column_combo: Optional[ttk.Combobox] = None
+        self.advanced_type_combo: Optional[ttk.Combobox] = None
 
         self.json_file_path = tk.StringVar()
         self.selected_array_key = tk.StringVar()
@@ -46,28 +62,33 @@ class ArrayMate:
         self.stringify_formulas = tk.BooleanVar(value=False)
         self.include_parent_metadata = tk.BooleanVar(value=False)
         self.selected_nested_candidate = tk.StringVar()
+        self.advanced_column = tk.StringVar()
+        self.advanced_type = tk.StringVar(value="Keep")
+        self.advanced_find = tk.StringVar()
+        self.advanced_replace = tk.StringVar()
+        self.advanced_status = tk.StringVar(value="No column action selected")
 
         self.setup_ui()
+        self._schedule_auto_filename_refresh()
 
     def setup_ui(self) -> None:
         """Set up the application window."""
-        main_frame = ttk.Frame(self.root, padding="18")
+        main_frame = ttk.Frame(self.root, padding="12")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
+        main_frame.rowconfigure(2, weight=1)
 
-        ttk.Label(main_frame, text="ArrayMate", font=self.TITLE_FONT).grid(row=0, column=0, pady=(0, 14))
+        ttk.Label(main_frame, text="ArrayMate", font=self.TITLE_FONT).grid(row=0, column=0, pady=(0, 8))
         self._create_file_selection_section(main_frame)
         self._create_candidate_section(main_frame)
-        self._create_output_settings_section(main_frame)
-        self._create_process_buttons(main_frame)
         self._create_status_section(main_frame)
 
     def _create_file_selection_section(self, parent: ttk.Frame) -> None:
-        file_frame = ttk.LabelFrame(parent, text="Step 1: Select JSON Source", padding="10")
-        file_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        file_frame = ttk.LabelFrame(parent, text="Step 1: Select JSON Source", padding="8")
+        file_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
         file_frame.columnconfigure(1, weight=1)
 
         ttk.Label(file_frame, text="JSON File:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
@@ -88,17 +109,18 @@ class ArrayMate:
         )
 
     def _create_candidate_section(self, parent: ttk.Frame) -> None:
-        candidate_frame = ttk.LabelFrame(parent, text="Step 2: Pick a Table Candidate", padding="10")
-        candidate_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        candidate_frame = ttk.LabelFrame(parent, text="Step 2: Pick a Table Candidate", padding="8")
+        candidate_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 8))
         candidate_frame.columnconfigure(0, weight=1)
         candidate_frame.columnconfigure(1, weight=1)
+        candidate_frame.rowconfigure(1, weight=1)
 
         ttk.Label(candidate_frame, text="Discovered Arrays:").grid(row=0, column=0, columnspan=2, sticky=tk.W)
         self.array_tree = ttk.Treeview(
             candidate_frame,
             columns=("items", "columns", "status"),
             show="tree headings",
-            height=8,
+            height=6,
             selectmode="browse",
         )
         self.array_tree.heading("#0", text="Path")
@@ -117,12 +139,23 @@ class ArrayMate:
 
         options_frame = ttk.LabelFrame(candidate_frame, text="Quick Options", padding="8")
         options_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N), padx=(0, 8))
-        ttk.Checkbutton(options_frame, text="Stringify everything", variable=self.stringify_all, state="disabled").grid(
+        options_frame.columnconfigure(0, weight=1)
+        ttk.Checkbutton(
+            options_frame,
+            text="Stringify everything",
+            variable=self.stringify_all,
+            command=self.refresh_selected_candidate,
+        ).grid(
             row=0,
             column=0,
             sticky=tk.W,
         )
-        ttk.Checkbutton(options_frame, text="Stringify formulas", variable=self.stringify_formulas, state="disabled").grid(
+        ttk.Checkbutton(
+            options_frame,
+            text="Stringify formulas",
+            variable=self.stringify_formulas,
+            command=self.refresh_selected_candidate,
+        ).grid(
             row=1,
             column=0,
             sticky=tk.W,
@@ -148,40 +181,27 @@ class ArrayMate:
         )
         self.nested_candidate_combo.grid(row=0, column=0, sticky=(tk.W, tk.E))
         self.nested_candidate_combo.bind("<<ComboboxSelected>>", self.refresh_selected_candidate)
-        self.nested_candidate_button = ttk.Button(
-            nested_action_frame,
-            text="Apply",
-            command=self.refresh_selected_candidate,
-            state="disabled",
-        )
-        self.nested_candidate_button.grid(row=0, column=1, padx=(6, 0))
-        ttk.Label(options_frame, text="Placeholder: string parsing options will be wired later.").grid(
+        ttk.Button(options_frame, text="Advanced Options", command=self.open_advanced_options).grid(
             row=5,
             column=0,
             sticky=tk.W,
             pady=(8, 0),
         )
 
-        advanced_frame = ttk.LabelFrame(candidate_frame, text="Advanced Column Types", padding="8")
-        advanced_frame.grid(row=3, column=1, sticky=(tk.W, tk.E, tk.N))
-        ttk.Label(advanced_frame, text="Placeholder: per-column type controls will appear here.").grid(
-            row=0,
-            column=0,
-            sticky=tk.W,
-        )
+        self._create_output_settings_section(candidate_frame, row=3, column=1)
 
         preview_frame = ttk.LabelFrame(candidate_frame, text="Preview", padding="8")
         preview_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
         preview_frame.columnconfigure(0, weight=1)
 
-        self.preview_tree = ttk.Treeview(preview_frame, show="headings", height=6)
+        self.preview_tree = ttk.Treeview(preview_frame, show="headings", height=4)
         self.preview_tree.grid(row=0, column=0, sticky=(tk.W, tk.E))
         self.preview_label = ttk.Label(preview_frame, text="Select an exportable array to preview rows.")
         self.preview_label.grid(row=1, column=0, sticky=tk.W, pady=(6, 0))
 
-    def _create_output_settings_section(self, parent: ttk.Frame) -> None:
-        output_frame = ttk.LabelFrame(parent, text="Step 3: Set Output Location", padding="10")
-        output_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+    def _create_output_settings_section(self, parent: ttk.Frame, row: int = 3, column: int = 0) -> None:
+        output_frame = ttk.LabelFrame(parent, text="Step 3: Export", padding="8")
+        output_frame.grid(row=row, column=column, sticky=(tk.W, tk.E, tk.N))
         output_frame.columnconfigure(1, weight=1)
 
         ttk.Label(output_frame, text="Output Format:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
@@ -195,26 +215,39 @@ class ArrayMate:
         format_combobox.grid(row=0, column=1, sticky=tk.W)
         format_combobox.bind("<<ComboboxSelected>>", self.on_format_selected)
 
-        ttk.Label(output_frame, text="Save Folder:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
-        ttk.Entry(output_frame, textvariable=self.output_folder, width=60).grid(
+        ttk.Label(output_frame, text="Save Folder:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(8, 0))
+        ttk.Entry(output_frame, textvariable=self.output_folder, width=34).grid(
             row=1,
             column=1,
             sticky=(tk.W, tk.E),
             padx=(0, 10),
-            pady=(10, 0),
+            pady=(8, 0),
         )
-        ttk.Button(output_frame, text="Browse", command=self.browse_output_folder).grid(row=1, column=2, pady=(10, 0))
+        ttk.Button(output_frame, text="Browse", command=self.browse_output_folder).grid(row=1, column=2, pady=(8, 0))
 
-        ttk.Label(output_frame, text="File Name:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
-        ttk.Entry(output_frame, textvariable=self.output_filename, width=60).grid(
+        ttk.Label(output_frame, text="File Name:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(8, 0))
+        filename_entry = ttk.Entry(output_frame, textvariable=self.output_filename, width=34)
+        filename_entry.grid(
             row=2,
             column=1,
             sticky=(tk.W, tk.E),
             padx=(0, 10),
-            pady=(10, 0),
+            pady=(8, 0),
         )
+        filename_entry.bind("<KeyRelease>", self.on_filename_edited)
         self.extension_label = ttk.Label(output_frame, text=".xlsx")
-        self.extension_label.grid(row=2, column=2, sticky=tk.W, pady=(10, 0))
+        self.extension_label.grid(row=2, column=2, sticky=tk.W, pady=(8, 0))
+
+        button_frame = ttk.Frame(output_frame)
+        button_frame.grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        self.process_button = ttk.Button(
+            button_frame,
+            text="Convert to File",
+            command=self.convert_to_file,
+            state="disabled",
+        )
+        self.process_button.pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="Clear All", command=self.clear_all).pack(side=tk.LEFT)
 
     def _create_process_buttons(self, parent: ttk.Frame) -> None:
         button_frame = ttk.Frame(parent)
@@ -231,7 +264,7 @@ class ArrayMate:
 
     def _create_status_section(self, parent: ttk.Frame) -> None:
         status_frame = ttk.LabelFrame(parent, text="Status & Events", padding="10")
-        status_frame.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=(6, 0))
+        status_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 0))
         status_frame.columnconfigure(0, weight=1)
         self.status_label = ttk.Label(
             status_frame,
@@ -247,6 +280,7 @@ class ArrayMate:
         self.selected_array_key.set("")
         self.output_folder.set("")
         self.output_filename.set("")
+        self.auto_filename = True
         self.output_format.set("Excel (.xlsx)")
         self.extension_label["text"] = ".xlsx"
         self.process_button["text"] = "Convert to File"
@@ -256,6 +290,8 @@ class ArrayMate:
         self.array_keys = []
         self.candidate_by_path = {}
         self.effective_candidate_key = ""
+        self.column_transforms = {}
+        self.current_preview_columns = []
         self.service.clear()
         self.array_tree.delete(*self.array_tree.get_children())
         self._clear_preview()
@@ -263,6 +299,9 @@ class ArrayMate:
         self.status_label["text"] = "Ready to convert JSON arrays"
         self.status_label["foreground"] = "green"
         self.include_parent_metadata.set(False)
+        self.stringify_all.set(False)
+        self.stringify_formulas.set(False)
+        self._reset_column_action_form()
         self.parent_metadata_check.state(["disabled"])
         self._clear_nested_candidate_action()
 
@@ -346,6 +385,8 @@ class ArrayMate:
     def _apply_load_result(self, load_result: LoadResult, source_label: str) -> None:
         self.array_keys = load_result.array_keys
         self.candidate_by_path = {candidate.display_path: candidate for candidate in load_result.array_candidates}
+        self.column_transforms = {}
+        self._reset_column_action_form()
         self.array_tree.delete(*self.array_tree.get_children())
         self._clear_preview()
 
@@ -392,8 +433,10 @@ class ArrayMate:
         folder_path = filedialog.askdirectory(title="Select Output Folder")
         if folder_path:
             self.output_folder.set(folder_path)
-            if self.selected_array_key.get():
-                self.output_filename.set(self._suggest_filename(self.selected_array_key.get()))
+            self._refresh_auto_filename()
+
+    def on_filename_edited(self, event: Optional[tk.Event] = None) -> None:
+        self.auto_filename = False
 
     def on_array_selected(self, event: Optional[tk.Event] = None) -> None:
         selection = self.array_tree.selection()
@@ -410,11 +453,11 @@ class ArrayMate:
         if candidate:
             self._select_candidate(candidate, reset_unfold=False)
 
-    def use_selected_nested_candidate(self) -> None:
-        self.refresh_selected_candidate()
-
     def _select_candidate(self, candidate: ArrayCandidate, reset_unfold: bool = True) -> None:
         previous_key = self.selected_array_key.get()
+        if previous_key and previous_key != candidate.display_path:
+            self.column_transforms = {}
+            self._reset_column_action_form()
         self.selected_array_key.set(candidate.display_path)
         self._update_nested_candidate_action(candidate, reset_unfold=reset_unfold or previous_key != candidate.display_path)
         unfold_key = self._unfold_key()
@@ -428,16 +471,20 @@ class ArrayMate:
                 is_new_selection=self.effective_candidate_key != candidate.display_path,
             )
         self.effective_candidate_key = effective_candidate.display_path
-        if self.output_folder.get():
-            self.output_filename.set(self._suggest_filename(effective_candidate.display_path))
+        if not self.output_filename.get():
+            self.auto_filename = True
+        self._refresh_auto_filename(effective_candidate.display_path)
 
-        array_data = self.service.get_table_data(
-            candidate.display_path,
-            unfold_key=unfold_key,
-            include_parent_metadata=self._include_parent_metadata_for(candidate),
-        )
-        if effective_candidate.exportable and array_data is not None:
+        if effective_candidate.exportable:
             try:
+                array_data = self.service.get_table_data(
+                    candidate.display_path,
+                    unfold_key=unfold_key,
+                    include_parent_metadata=self._include_parent_metadata_for(candidate),
+                    transform_options=self._table_transform_options(),
+                )
+                if array_data is None:
+                    raise ArrayMateCoreError("Selected array is invalid")
                 preview = build_table_preview(array_data, effective_candidate.display_path)
                 self.array_info_label["text"] = self._candidate_detail_text(candidate, effective_candidate, preview)
                 self._render_preview(preview)
@@ -485,6 +532,13 @@ class ArrayMate:
     def _include_parent_metadata_for(self, candidate: ArrayCandidate) -> bool:
         return self._supports_parent_metadata(candidate) and self.include_parent_metadata.get()
 
+    def _table_transform_options(self) -> TableTransformOptions:
+        return TableTransformOptions(
+            stringify_all=self.stringify_all.get(),
+            stringify_formulas=self.stringify_formulas.get(),
+            column_transforms=tuple(self.column_transforms.values()),
+        )
+
     def _effective_candidate(self, candidate: ArrayCandidate) -> ArrayCandidate:
         nested_key = self._unfold_key()
         if nested_key:
@@ -507,18 +561,18 @@ class ArrayMate:
         self.nested_candidate_combo["values"] = nested_values
         if reset_unfold or self.selected_nested_candidate.get() not in nested_values:
             self.selected_nested_candidate.set(self.NO_UNFOLD_LABEL)
-        self.nested_candidate_combo.state(["!disabled"])
-        self.nested_candidate_button.state(["!disabled"])
+            self.nested_candidate_combo.state(["!disabled"])
 
     def _clear_nested_candidate_action(self) -> None:
         self.selected_nested_candidate.set("")
         self.nested_candidate_combo["values"] = []
         self.nested_candidate_combo.state(["disabled"])
-        self.nested_candidate_button.state(["disabled"])
 
     def _render_preview(self, preview: TablePreview) -> None:
         self.preview_tree.delete(*self.preview_tree.get_children())
         column_names = [column.name for column in preview.columns[: self.MAX_PREVIEW_COLUMNS]]
+        self.current_preview_columns = [column.name for column in preview.columns]
+        self._refresh_column_action_columns()
         self.preview_tree["columns"] = column_names
 
         for column_name in column_names:
@@ -538,7 +592,226 @@ class ArrayMate:
     def _clear_preview(self, message: str = "Select an exportable array to preview rows.") -> None:
         self.preview_tree.delete(*self.preview_tree.get_children())
         self.preview_tree["columns"] = ()
+        self.current_preview_columns = []
+        self._refresh_column_action_columns()
         self.preview_label["text"] = message
+
+    def open_advanced_options(self) -> None:
+        if self._advanced_options_is_open():
+            self.advanced_window.focus()
+            return
+
+        self.advanced_window = tk.Toplevel(self.root)
+        self.advanced_window.title("Advanced Options")
+        self.advanced_window.geometry("520x300")
+        self.advanced_window.resizable(False, False)
+        self.advanced_window.protocol("WM_DELETE_WINDOW", self._close_advanced_options)
+
+        notebook = ttk.Notebook(self.advanced_window)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        column_frame = ttk.Frame(notebook, padding="10")
+        additional_frame = ttk.Frame(notebook, padding="10")
+        notebook.add(column_frame, text="Column Actions")
+        notebook.add(additional_frame, text="Additional Actions")
+
+        self._create_column_actions_tab(column_frame)
+        ttk.Label(additional_frame, text="Placeholder for future table-level actions.").grid(row=0, column=0, sticky=tk.W)
+        self._refresh_column_action_columns()
+
+    def _close_advanced_options(self) -> None:
+        if self.advanced_window is not None:
+            self.advanced_window.destroy()
+            self.advanced_window = None
+        self.advanced_column_combo = None
+        self.advanced_type_combo = None
+
+    def _advanced_options_is_open(self) -> bool:
+        try:
+            return self.advanced_window is not None and bool(self.advanced_window.winfo_exists())
+        except tk.TclError:
+            self.advanced_window = None
+            self.advanced_column_combo = None
+            self.advanced_type_combo = None
+            return False
+
+    def _create_column_actions_tab(self, parent: ttk.Frame) -> None:
+        parent.columnconfigure(1, weight=1)
+
+        ttk.Label(parent, text="Column:").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
+        self.advanced_column_combo = ttk.Combobox(
+            parent,
+            textvariable=self.advanced_column,
+            state="readonly",
+            width=34,
+        )
+        self.advanced_column_combo.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        self.advanced_column_combo.bind("<<ComboboxSelected>>", self._load_column_action)
+
+        ttk.Label(parent, text="Data Type:").grid(row=1, column=0, sticky=tk.W, padx=(0, 8), pady=(8, 0))
+        self.advanced_type_combo = ttk.Combobox(
+            parent,
+            textvariable=self.advanced_type,
+            values=["Keep", "Text", "Number", "Integer", "Boolean"],
+            state="readonly",
+            width=18,
+        )
+        self.advanced_type_combo.grid(row=1, column=1, sticky=tk.W, pady=(8, 0))
+
+        ttk.Label(parent, text="Find:").grid(row=2, column=0, sticky=tk.W, padx=(0, 8), pady=(8, 0))
+        ttk.Entry(parent, textvariable=self.advanced_find).grid(row=2, column=1, sticky=(tk.W, tk.E), pady=(8, 0))
+
+        ttk.Label(parent, text="Replace:").grid(row=3, column=0, sticky=tk.W, padx=(0, 8), pady=(8, 0))
+        ttk.Entry(parent, textvariable=self.advanced_replace).grid(row=3, column=1, sticky=(tk.W, tk.E), pady=(8, 0))
+
+        button_frame = ttk.Frame(parent)
+        button_frame.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(12, 0))
+        ttk.Button(button_frame, text="Apply Column Action", command=self._save_column_action).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(button_frame, text="Clear Column Action", command=self._clear_column_action).pack(side=tk.LEFT)
+
+        ttk.Label(parent, textvariable=self.advanced_status).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
+
+    def _refresh_column_action_columns(self) -> None:
+        combo = self.advanced_column_combo
+        if combo is None or not self._advanced_options_is_open():
+            return
+
+        try:
+            combo.winfo_exists()
+        except tk.TclError:
+            self.advanced_column_combo = None
+            return
+
+        combo["values"] = self.current_preview_columns
+        if not self.current_preview_columns:
+            self._reset_column_action_form()
+            combo.state(["disabled"])
+            return
+
+        combo.state(["!disabled"])
+        if self.advanced_column.get() not in self.current_preview_columns:
+            self.advanced_column.set(self.current_preview_columns[0])
+        self._load_column_action()
+
+    def _load_column_action(self, event: Optional[tk.Event] = None) -> None:
+        column = self.advanced_column.get()
+        possible_types = self._possible_types_for_column(column)
+        if self.advanced_type_combo is not None:
+            self.advanced_type_combo["values"] = possible_types
+
+        transform = self.column_transforms.get(column)
+        if transform is None:
+            self.advanced_type.set("Keep")
+            self.advanced_find.set("")
+            self.advanced_replace.set("")
+            self.advanced_status.set(self._column_type_hint(column, possible_types))
+            return
+
+        self.advanced_type.set(transform.data_type if transform.data_type in possible_types else "Keep")
+        self.advanced_find.set(transform.find_text)
+        self.advanced_replace.set(transform.replace_text)
+        self.advanced_status.set(f"{self._column_action_status_text(transform)} | {self._column_type_hint(column, possible_types)}")
+
+    def _save_column_action(self) -> None:
+        column = self.advanced_column.get()
+        if not column:
+            messagebox.showerror("Error", "Please select a column")
+            return
+
+        transform = ColumnTransform(
+            column=column,
+            data_type=self.advanced_type.get(),
+            find_text=self.advanced_find.get(),
+            replace_text=self.advanced_replace.get(),
+        )
+        next_transforms = dict(self.column_transforms)
+        if transform.data_type == "Keep" and not transform.find_text:
+            next_transforms.pop(column, None)
+        else:
+            next_transforms[column] = transform
+
+        try:
+            self._validate_column_transforms(next_transforms)
+        except ArrayMateCoreError as e:
+            self.advanced_status.set(f"Cannot apply: {e}")
+            self.status_label["text"] = str(e)
+            self.status_label["foreground"] = "red"
+            return
+
+        self.column_transforms = next_transforms
+        self.advanced_status.set(
+            f"No action set for {column}" if transform.data_type == "Keep" and not transform.find_text else self._column_action_status_text(transform)
+        )
+        self.refresh_selected_candidate()
+
+    def _clear_column_action(self) -> None:
+        column = self.advanced_column.get()
+        if column:
+            self.column_transforms.pop(column, None)
+        self.advanced_type.set("Keep")
+        self.advanced_find.set("")
+        self.advanced_replace.set("")
+        self.advanced_status.set(f"No action set for {column}" if column else "No column selected")
+        self.refresh_selected_candidate()
+
+    def _reset_column_action_form(self) -> None:
+        self.advanced_column.set("")
+        self.advanced_type.set("Keep")
+        self.advanced_find.set("")
+        self.advanced_replace.set("")
+        self.advanced_status.set("No column action selected")
+
+    def _column_action_status_text(self, transform: ColumnTransform) -> str:
+        parts = [f"{transform.column}: {transform.data_type}"]
+        if transform.find_text:
+            parts.append(f"replace '{transform.find_text}' with '{transform.replace_text}'")
+        return " | ".join(parts)
+
+    def _possible_types_for_column(self, column: str) -> tuple[str, ...]:
+        if not column:
+            return ("Keep", "Text")
+
+        array_data = self._current_table_data_without_column_transforms()
+        return infer_column_transform_types(array_data, column)
+
+    def _column_type_hint(self, column: str, possible_types: tuple[str, ...]) -> str:
+        if not column:
+            return "No column selected"
+        return f"Possible types for {column}: {', '.join(possible_types)}"
+
+    def _current_table_data_without_column_transforms(self) -> Optional[list[Any]]:
+        candidate = self.candidate_by_path.get(self.selected_array_key.get())
+        if candidate is None:
+            return None
+
+        return self.service.get_table_data(
+            candidate.display_path,
+            unfold_key=self._unfold_key(),
+            include_parent_metadata=self._include_parent_metadata_for(candidate),
+            transform_options=TableTransformOptions(
+                stringify_all=self.stringify_all.get(),
+                stringify_formulas=self.stringify_formulas.get(),
+            ),
+        )
+
+    def _validate_column_transforms(self, column_transforms: dict[str, ColumnTransform]) -> None:
+        candidate = self.candidate_by_path.get(self.selected_array_key.get())
+        if candidate is None:
+            return
+
+        array_data = self.service.get_table_data(
+            candidate.display_path,
+            unfold_key=self._unfold_key(),
+            include_parent_metadata=self._include_parent_metadata_for(candidate),
+            transform_options=TableTransformOptions(
+                stringify_all=self.stringify_all.get(),
+                stringify_formulas=self.stringify_formulas.get(),
+                column_transforms=tuple(column_transforms.values()),
+            ),
+        )
+        if array_data is None:
+            raise ArrayMateCoreError("Selected array is invalid")
+        build_table_preview(array_data, self.effective_candidate_key or candidate.display_path)
 
     def _format_preview_value(self, value: Any) -> str:
         if isinstance(value, dict):
@@ -551,7 +824,21 @@ class ArrayMate:
 
     def _suggest_filename(self, array_key: str) -> str:
         clean_name = "".join(char if char.isalnum() else "_" for char in array_key).strip("_")
-        return f"{clean_name or 'array'}_data"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return f"{clean_name or 'array'}_{timestamp}"
+
+    def _refresh_auto_filename(self, array_key: Optional[str] = None) -> None:
+        if not self.auto_filename:
+            return
+
+        selected_key = array_key or self.effective_candidate_key or self.selected_array_key.get()
+        if selected_key:
+            self.output_filename.set(self._suggest_filename(selected_key))
+
+    def _schedule_auto_filename_refresh(self) -> None:
+        if self.auto_filename and self.selected_array_key.get():
+            self._refresh_auto_filename()
+        self.root.after(1000, self._schedule_auto_filename_refresh)
 
     def convert_to_file(self) -> None:
         if not self.selected_array_key.get():
@@ -588,6 +875,7 @@ class ArrayMate:
                     selected_candidate and not unfold_key and self._include_parent_metadata_for(selected_candidate)
                 ),
                 unfold_key=unfold_key,
+                transform_options=self._table_transform_options(),
             )
             messagebox.showinfo(
                 "Success",

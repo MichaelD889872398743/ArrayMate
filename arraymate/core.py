@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, Union
 
@@ -76,6 +77,25 @@ class TablePreview:
     columns: tuple[ColumnPreview, ...]
     preview_rows: tuple[dict[str, Any], ...]
     warnings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class TableTransformOptions:
+    """User-selected table transformations applied before preview/export."""
+
+    stringify_all: bool = False
+    stringify_formulas: bool = False
+    column_transforms: tuple["ColumnTransform", ...] = ()
+
+
+@dataclass(frozen=True)
+class ColumnTransform:
+    """User-selected transformation for one output column."""
+
+    column: str
+    data_type: str = "Keep"
+    find_text: str = ""
+    replace_text: str = ""
 
 
 @dataclass(frozen=True)
@@ -381,6 +401,189 @@ def build_table_preview(array_data: Optional[list[Any]], display_path: str, max_
     )
 
 
+def apply_table_transform_options(
+    array_data: Optional[list[Any]],
+    options: Optional[TableTransformOptions] = None,
+) -> Optional[list[Any]]:
+    """Return table data with user-selected quick transformations applied."""
+    if array_data is None or options is None:
+        return array_data
+
+    if not options.stringify_all and not options.stringify_formulas and not options.column_transforms:
+        return array_data
+
+    return [_transform_table_row(item, options) for item in array_data]
+
+
+def infer_column_transform_types(array_data: Optional[list[Any]], column: str) -> tuple[str, ...]:
+    """Return data type actions that can be applied to all current values in a column."""
+    base_types = ["Keep", "Text"]
+    if not array_data:
+        return tuple(base_types)
+
+    values = [row.get(column) for row in array_data if isinstance(row, dict) and column in row]
+    meaningful_values = [value for value in values if value not in (None, "")]
+    if not meaningful_values:
+        return tuple(base_types + ["Number", "Integer", "Boolean"])
+
+    if all(_can_coerce_number(value) for value in meaningful_values):
+        base_types.append("Number")
+        if all(_can_coerce_integer(value) for value in meaningful_values):
+            base_types.append("Integer")
+    if all(_can_coerce_boolean(value) for value in meaningful_values):
+        base_types.append("Boolean")
+
+    return tuple(base_types)
+
+
+def is_spreadsheet_formula_text(value: str) -> bool:
+    """Return whether a string can be interpreted as a spreadsheet formula."""
+    if value.startswith("'"):
+        return False
+
+    stripped_value = value.lstrip(" \t\r\n")
+    return bool(stripped_value) and stripped_value[0] in ("=", "+", "-", "@")
+
+
+def _transform_table_row(row: Any, options: TableTransformOptions) -> Any:
+    if isinstance(row, dict):
+        column_transforms = {transform.column: transform for transform in options.column_transforms}
+        return {
+            key: _transform_table_cell(value, options, column_transforms.get(str(key)))
+            for key, value in row.items()
+        }
+    return _transform_value(row, options)
+
+
+def _transform_table_cell(value: Any, options: TableTransformOptions, column_transform: Optional[ColumnTransform]) -> Any:
+    transformed_value = _transform_value(value, options)
+    if column_transform is not None:
+        transformed_value = _apply_column_transform(transformed_value, column_transform)
+    if isinstance(transformed_value, str) and (options.stringify_all or options.stringify_formulas):
+        return _escape_formula_text(transformed_value)
+    return transformed_value
+
+
+def _transform_value(value: Any, options: TableTransformOptions) -> Any:
+    if options.stringify_all:
+        return _escape_formula_text(_stringify_value(value))
+
+    if isinstance(value, dict):
+        return {key: _transform_value(item, options) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_transform_value(item, options) for item in value]
+    if options.stringify_formulas and isinstance(value, str):
+        return _escape_formula_text(value)
+
+    return value
+
+
+def _stringify_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, default=str)
+    return str(value)
+
+
+def _escape_formula_text(value: str) -> str:
+    if is_spreadsheet_formula_text(value):
+        return f"'{value}"
+    return value
+
+
+def _apply_column_transform(value: Any, transform: ColumnTransform) -> Any:
+    transformed_value = value
+    if transform.find_text:
+        transformed_value = _stringify_value(transformed_value).replace(transform.find_text, transform.replace_text)
+
+    data_type = transform.data_type.lower()
+    if data_type == "keep":
+        return transformed_value
+    if data_type == "text":
+        return _escape_formula_text(_stringify_value(transformed_value))
+    if data_type == "number":
+        return _coerce_number(transformed_value)
+    if data_type == "integer":
+        number_value = _coerce_number(transformed_value)
+        if number_value is None:
+            return None
+        if not _is_integral_decimal(number_value):
+            raise ArrayMateCoreError(f"Cannot convert '{transformed_value}' to integer")
+        return int(number_value)
+    if data_type == "boolean":
+        return _coerce_boolean(transformed_value)
+
+    return transformed_value
+
+
+def _coerce_number(value: Any) -> Optional[Decimal]:
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return Decimal(1) if value else Decimal(0)
+    if isinstance(value, Decimal):
+        return value
+    if isinstance(value, (int, float)):
+        return Decimal(str(value))
+
+    text = str(value).strip()
+    if not text:
+        return None
+    if "," in text and "." not in text:
+        text = text.replace(",", ".")
+    try:
+        return Decimal(text)
+    except InvalidOperation as exc:
+        raise ArrayMateCoreError(f"Cannot convert '{value}' to number") from exc
+
+
+def _can_coerce_number(value: Any) -> bool:
+    try:
+        _coerce_number(value)
+        return True
+    except ArrayMateCoreError:
+        return False
+
+
+def _can_coerce_integer(value: Any) -> bool:
+    try:
+        number_value = _coerce_number(value)
+    except ArrayMateCoreError:
+        return False
+    return number_value is None or _is_integral_decimal(number_value)
+
+
+def _coerce_boolean(value: Any) -> Optional[bool]:
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float, Decimal)):
+        return value != 0
+
+    text = str(value).strip().lower()
+    if text in ("true", "yes", "y", "1"):
+        return True
+    if text in ("false", "no", "n", "0"):
+        return False
+    raise ArrayMateCoreError(f"Cannot convert '{value}' to boolean")
+
+
+def _can_coerce_boolean(value: Any) -> bool:
+    try:
+        _coerce_boolean(value)
+        return True
+    except ArrayMateCoreError:
+        return False
+
+
+def _is_integral_decimal(value: Decimal) -> bool:
+    return value == value.to_integral_value()
+
+
 def _build_node(value: Any, path: tuple[Any, ...], label: str) -> JsonNode:
     kind = _value_kind(value)
     if isinstance(value, dict):
@@ -528,7 +731,7 @@ def _value_kind(value: Any) -> str:
         return "null"
     if isinstance(value, bool):
         return "boolean"
-    if isinstance(value, (int, float)):
+    if isinstance(value, (int, float, Decimal)):
         return "number"
     return "text"
 
@@ -652,8 +855,21 @@ def write_array_to_file(array_data: Optional[list[Any]], file_path: str, output_
     elif output_format.label == "CSV":
         dataframe.to_csv(output_path, index=False)
     elif output_format.label == "JSON":
-        dataframe.to_json(output_path, orient="records", indent=2)
+        output_path.write_text(
+            json.dumps(_json_export_value(array_data), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
     else:
         raise ArrayMateCoreError(f"Unsupported output format: {output_format.label}")
 
     return dataframe
+
+
+def _json_export_value(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _json_export_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_export_value(item) for item in value]
+    return value

@@ -1,0 +1,42 @@
+{
+  "": [
+    {
+      " ": "empty key test",
+      "__id__": 1,
+      "123": "numeric key",
+      "user-name": "John",
+      "user.name": "John",
+      "user/name": "John",
+      "🔥": "emoji key",
+      "nullValue": null,
+      "emptyArray": [],
+      "emptyObject": {},
+      "mixedArray": [
+        123,
+        "abc",
+        true,
+        null,
+        {
+          "nested": "value"
+        }
+      ]
+    }
+  ],
+
+  "weird departments": [
+    {
+      "dept id": "D001",
+      "employee-count": 15,
+      "budget (€)": 1500000,
+      "manager?": "John Doe"
+    }
+  ],
+
+  "nested_empty": {
+    "a": {
+      "b": {
+        "c": []
+      }
+    }
+  }
+}

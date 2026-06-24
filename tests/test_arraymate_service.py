@@ -1,7 +1,9 @@
 import json
 import unittest
+from decimal import Decimal
 from pathlib import Path
 
+from arraymate.core import ColumnTransform, TableTransformOptions
 from arraymate.service import ArrayMateService
 
 
@@ -57,6 +59,51 @@ class ArrayMateServiceTests(unittest.TestCase):
             self.assertEqual(json.loads(output_path.read_text(encoding="utf-8")), [{"sku": "A"}, {"sku": "B"}, {"sku": "C"}])
         finally:
             output_path.unlink(missing_ok=True)
+
+    def test_table_data_applies_transform_options(self):
+        service = ArrayMateService()
+        service.load_text('{"rows": [{"id": 1, "formula": "=SUM(1,2)", "amount": -9.5}]}')
+
+        rows = service.get_table_data("rows", transform_options=TableTransformOptions(stringify_formulas=True))
+        string_rows = service.get_table_data("rows", transform_options=TableTransformOptions(stringify_all=True))
+
+        self.assertEqual(rows, [{"id": 1, "formula": "'=SUM(1,2)", "amount": -9.5}])
+        self.assertEqual(string_rows, [{"id": "1", "formula": "'=SUM(1,2)", "amount": "'-9.5"}])
+
+    def test_export_array_applies_transform_options(self):
+        service = ArrayMateService()
+        service.load_text('{"rows": [{"id": 1, "formula": "=SUM(1,2)"}]}')
+        output_path = Path("test_arraymate_service_formulas.json")
+
+        try:
+            plan = service.create_export_plan(".", output_path.stem, "JSON (.json)")
+            service.export_array("rows", plan, transform_options=TableTransformOptions(stringify_formulas=True))
+
+            self.assertEqual(json.loads(output_path.read_text(encoding="utf-8")), [{"id": 1, "formula": "'=SUM(1,2)"}])
+        finally:
+            output_path.unlink(missing_ok=True)
+
+    def test_table_data_applies_column_transforms(self):
+        service = ArrayMateService()
+        service.load_text('{"rows": [{"cost": "12,50"}, {"cost": "3,25"}]}')
+
+        rows = service.get_table_data(
+            "rows",
+            transform_options=TableTransformOptions(
+                column_transforms=(ColumnTransform(column="cost", data_type="Number", find_text=",", replace_text="."),)
+            ),
+        )
+
+        self.assertEqual(rows, [{"cost": Decimal("12.50")}, {"cost": Decimal("3.25")}])
+
+    def test_load_text_preserves_decimal_spelling(self):
+        service = ArrayMateService()
+        service.load_text('{"users": [{"salary": 65.000}, {"salary": 65.0123}]}')
+
+        rows = service.get_table_data("users")
+
+        self.assertEqual(rows, [{"salary": Decimal("65.000")}, {"salary": Decimal("65.0123")}])
+        self.assertEqual(str(rows[0]["salary"]), "65.000")
 
     def test_grouped_nested_candidate_can_include_parent_metadata(self):
         service = ArrayMateService()

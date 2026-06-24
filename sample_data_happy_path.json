@@ -7,7 +7,7 @@
       "age": 30,
       "city": "New York",
       "department": "Engineering",
-      "salary": 75000
+      "salary": 75.000
     },
     {
       "id": 2,
@@ -16,7 +16,7 @@
       "age": 28,
       "city": "Los Angeles",
       "department": "Marketing",
-      "salary": 65000
+      "salary": 65.123
     },
     {
       "id": 3,

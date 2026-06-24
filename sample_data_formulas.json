@@ -1,0 +1,26 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "safe_text": "normal value",
+      "formula_equals": "=SUM(1,2)",
+      "formula_plus": "+SUM(1,2)",
+      "formula_minus": "-SUM(1,2)",
+      "formula_at": "@SUM(1,2)"
+    },
+    {
+      "id": 2,
+      "dangerous_hyperlink": "=HYPERLINK(\"http://example.com\",\"click me\")",
+      "cmd_like": "=cmd|' /C calc'!A0",
+      "powershell_like": "=powershell|'-NoP -Command whoami'!A0",
+      "dde_like": "=MSEXCEL|\"\\\\evil\\\\share\"!A1"
+    },
+    {
+      "id": 3,
+      "hidden_formula_with_spaces": "   =SUM(10,20)",
+      "tab_prefixed_formula": "\t=SUM(30,40)",
+      "newline_formula": "\n=SUM(50,60)",
+      "looks_like_formula_but_safe": "'=SUM(70,80)"
+    }
+  ]
+}

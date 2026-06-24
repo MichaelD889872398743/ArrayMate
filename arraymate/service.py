@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Optional
 
 from arraymate.core import (
@@ -12,6 +13,8 @@ from arraymate.core import (
     JsonData,
     JsonNode,
     OutputFormat,
+    TableTransformOptions,
+    apply_table_transform_options,
     build_output_path,
     build_json_tree,
     discover_array_candidates,
@@ -74,12 +77,12 @@ class ArrayMateService:
 
     def load_text(self, json_text: str) -> LoadResult:
         """Parse JSON text and load it into the workflow."""
-        return self.load_data(json.loads(json_text))
+        return self.load_data(json.loads(json_text, parse_float=Decimal))
 
     def load_file(self, file_path: str) -> LoadResult:
         """Read a JSON file and load it into the workflow."""
         with open(file_path, "r", encoding="utf-8") as file:
-            return self.load_data(json.load(file))
+            return self.load_data(json.load(file, parse_float=Decimal))
 
     def load_data(self, data: JsonData) -> LoadResult:
         """Load parsed JSON data."""
@@ -120,6 +123,7 @@ class ArrayMateService:
         array_key: Optional[str],
         unfold_key: Optional[str] = None,
         include_parent_metadata: bool = False,
+        transform_options: Optional[TableTransformOptions] = None,
     ) -> Optional[list[Any]]:
         """Return rows for the selected table, optionally unfolding a nested child table."""
         if not array_key or self.json_data is None:
@@ -130,9 +134,15 @@ class ArrayMateService:
             nested = self.get_array_candidate(unfold_key)
             if parent is None or nested is None:
                 return None
-            return get_unfolded_array_data(self.json_data, parent.path, nested.path)
+            return apply_table_transform_options(
+                get_unfolded_array_data(self.json_data, parent.path, nested.path),
+                transform_options,
+            )
 
-        return self.get_array_data(array_key, include_parent_metadata=include_parent_metadata)
+        return apply_table_transform_options(
+            self.get_array_data(array_key, include_parent_metadata=include_parent_metadata),
+            transform_options,
+        )
 
     def get_array_candidate(self, array_key: str) -> Optional[ArrayCandidate]:
         """Return candidate metadata by display path."""
@@ -178,12 +188,14 @@ class ArrayMateService:
         export_plan: ExportPlan,
         include_parent_metadata: bool = False,
         unfold_key: Optional[str] = None,
+        transform_options: Optional[TableTransformOptions] = None,
     ) -> ExportResult:
         """Write the selected array to the planned output file."""
         array_data = self.get_table_data(
             array_key,
             unfold_key=unfold_key,
             include_parent_metadata=include_parent_metadata,
+            transform_options=transform_options,
         )
         dataframe = write_array_to_file(array_data, export_plan.file_path, export_plan.output_format)
         return ExportResult(

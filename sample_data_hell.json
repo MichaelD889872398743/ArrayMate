@@ -1,0 +1,56 @@
+{
+  "root": [
+    {
+      "id": 1,
+      "ID": "001",
+      "Id": "one",
+      "user.name": "Alice",
+      "user/name": "Alice Slash",
+      "user name": "Alice Space",
+      "nested": {
+        "level1": {
+          "level2": {
+            "level3": {
+              "level4": {
+                "level5": {
+                  "level6": {
+                    "level7": {
+                      "level8": {
+                        "value": "deep value",
+                        "emptyArray": [],
+                        "mixed": [
+                          null,
+                          true,
+                          false,
+                          123,
+                          "text",
+                          {
+                            "insideArray": [
+                              [],
+                              [{}],
+                              [{"x": "y"}]
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "mojibake": "MÃ¼nster, KÃ¶ln, DÃ¼sseldorf",
+      "unicode": "Münster, Köln, Düsseldorf",
+      "emoji_text": "normal text 🚀🔥 with emoji",
+      "very_long_text": "START Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum END"
+    }
+  ],
+  "empty_things": {
+    "empty_array": [],
+    "empty_object": {},
+    "array_of_empty_arrays": [[], [], []],
+    "array_of_empty_objects": [{}, {}, {}]
+  }
+}

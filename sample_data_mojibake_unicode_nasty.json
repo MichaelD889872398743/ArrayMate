@@ -1,0 +1,45 @@
+{
+  "customers": [
+    {
+      "id": 1,
+      "name": "JÃ¶rg MÃ¼ller",
+      "city": "MÃ¼nster",
+      "comment": "FranÃ§ais text that got mangled",
+      "actual_unicode": "Jörg Müller",
+      "emoji": "🚀🔥🎉",
+      "rtl_text": "مرحبا بالعالم",
+      "japanese": "こんにちは世界",
+      "chinese": "你好世界"
+    },
+
+    {
+      "id": 2,
+      "name": "",
+      "city": null,
+      "comment": "   ",
+      "emoji": "",
+      "notes": []
+    }
+  ],
+
+  "orders": [
+    {
+      "order_id": "ORD001",
+      "amount": -999.99,
+      "status": "COMPLETED",
+      "items": []
+    },
+
+    {
+      "order_id": "ORD002",
+      "amount": 999999999999999.999999,
+      "status": "",
+      "items": [
+        {
+          "sku": "ABC",
+          "qty": 0
+        }
+      ]
+    }
+  ]
+}
