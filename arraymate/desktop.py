@@ -33,7 +33,20 @@ class ArrayMate:
     DEFAULT_FONT = ("Arial", 10)
     TITLE_FONT = ("Arial", 16, "bold")
     CODE_FONT = ("Consolas", 10)
+    UI_FONT = ("Segoe UI", 10)
+    UI_FONT_SMALL = ("Segoe UI", 9)
+    PANE_TITLE_FONT = ("Segoe UI", 8, "bold")
     MAX_PREVIEW_COLUMNS = 10
+    COLOR_BG = "#1e1e1e"
+    COLOR_PANEL = "#252526"
+    COLOR_PANEL_2 = "#2d2d30"
+    COLOR_BORDER = "#3c3c3c"
+    COLOR_TEXT = "#d4d4d4"
+    COLOR_MUTED = "#9da5b4"
+    COLOR_ACCENT = "#007acc"
+    COLOR_GREEN = "#4ec9b0"
+    COLOR_YELLOW = "#ffd166"
+    COLOR_RED = "#f48771"
 
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
@@ -49,9 +62,9 @@ class ArrayMate:
         self.auto_filename = True
         self.column_transforms: dict[str, ColumnTransform] = {}
         self.current_preview_columns: list[str] = []
-        self.advanced_window: Optional[tk.Toplevel] = None
         self.advanced_column_combo: Optional[ttk.Combobox] = None
         self.advanced_type_combo: Optional[ttk.Combobox] = None
+        self.advanced_section_frame: Optional[ttk.Frame] = None
 
         self.json_file_path = tk.StringVar()
         self.selected_array_key = tk.StringVar()
@@ -62,6 +75,8 @@ class ArrayMate:
         self.stringify_formulas = tk.BooleanVar(value=False)
         self.include_parent_metadata = tk.BooleanVar(value=False)
         self.selected_nested_candidate = tk.StringVar()
+        self.advanced_options_visible = tk.BooleanVar(value=False)
+        self.json_input_visible = tk.BooleanVar(value=False)
         self.advanced_column = tk.StringVar()
         self.advanced_type = tk.StringVar(value="Keep")
         self.advanced_find = tk.StringVar()
@@ -73,184 +88,280 @@ class ArrayMate:
 
     def setup_ui(self) -> None:
         """Set up the application window."""
-        main_frame = ttk.Frame(self.root, padding="12")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-
+        self._configure_styles()
+        self.root.configure(bg=self.COLOR_BG)
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(2, weight=1)
 
-        ttk.Label(main_frame, text="ArrayMate", font=self.TITLE_FONT).grid(row=0, column=0, pady=(0, 8))
-        self._create_file_selection_section(main_frame)
-        self._create_candidate_section(main_frame)
-        self._create_status_section(main_frame)
+        shell = ttk.Frame(self.root, style="App.TFrame")
+        shell.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        shell.columnconfigure(0, weight=1)
+        shell.rowconfigure(1, weight=1)
 
-    def _create_file_selection_section(self, parent: ttk.Frame) -> None:
-        file_frame = ttk.LabelFrame(parent, text="Step 1: Select JSON Source", padding="8")
-        file_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
-        file_frame.columnconfigure(1, weight=1)
+        self._create_source_bar(shell)
+        self._create_workspace(shell)
+        self._create_status_section(shell)
 
-        ttk.Label(file_frame, text="JSON File:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
-        ttk.Entry(file_frame, textvariable=self.json_file_path, width=60).grid(
-            row=0,
-            column=1,
-            sticky=(tk.W, tk.E),
-            padx=(0, 10),
+    def _configure_styles(self) -> None:
+        style = ttk.Style(self.root)
+        style.theme_use("clam")
+        style.configure(".", font=self.UI_FONT)
+        style.configure("App.TFrame", background=self.COLOR_BG)
+        style.configure("Header.TFrame", background=self.COLOR_PANEL)
+        style.configure("Panel.TFrame", background=self.COLOR_PANEL)
+        style.configure("Center.TFrame", background=self.COLOR_BG)
+        style.configure("Card.TFrame", background=self.COLOR_PANEL, bordercolor=self.COLOR_BORDER, relief="solid")
+        style.configure("Section.TLabelframe", background=self.COLOR_PANEL, bordercolor=self.COLOR_BORDER)
+        style.configure("Section.TLabelframe.Label", background=self.COLOR_PANEL, foreground=self.COLOR_TEXT, font=self.UI_FONT_SMALL)
+        style.configure("TLabel", background=self.COLOR_BG, foreground=self.COLOR_TEXT)
+        style.configure("Muted.TLabel", background=self.COLOR_BG, foreground=self.COLOR_MUTED, font=self.UI_FONT_SMALL)
+        style.configure("Panel.TLabel", background=self.COLOR_PANEL, foreground=self.COLOR_TEXT)
+        style.configure("PanelMuted.TLabel", background=self.COLOR_PANEL, foreground=self.COLOR_MUTED, font=self.UI_FONT_SMALL)
+        style.configure("PaneTitle.TLabel", background=self.COLOR_PANEL, foreground=self.COLOR_MUTED, font=self.PANE_TITLE_FONT)
+        style.configure("HeaderTitle.TLabel", background=self.COLOR_PANEL, foreground=self.COLOR_TEXT, font=("Segoe UI", 14, "bold"))
+        style.configure("Status.TLabel", background=self.COLOR_ACCENT, foreground="white", font=self.UI_FONT_SMALL)
+        style.configure("TEntry", fieldbackground="#1b1b1b", foreground=self.COLOR_TEXT, insertcolor=self.COLOR_TEXT, bordercolor=self.COLOR_BORDER)
+        style.configure("TCombobox", fieldbackground="#1b1b1b", foreground=self.COLOR_TEXT, arrowcolor=self.COLOR_TEXT, bordercolor=self.COLOR_BORDER)
+        style.configure("TButton", background=self.COLOR_PANEL_2, foreground=self.COLOR_TEXT, bordercolor=self.COLOR_BORDER, focusthickness=0)
+        style.map("TButton", background=[("active", "#3a3d41")])
+        style.configure("Accent.TButton", background=self.COLOR_ACCENT, foreground="white", bordercolor=self.COLOR_ACCENT)
+        style.map("Accent.TButton", background=[("active", "#1688d1"), ("disabled", "#3c3c3c")])
+        style.configure("TCheckbutton", background=self.COLOR_BG, foreground=self.COLOR_TEXT)
+        style.map("TCheckbutton", background=[("active", self.COLOR_BG)], foreground=[("disabled", self.COLOR_MUTED)])
+        style.configure("Panel.TCheckbutton", background=self.COLOR_PANEL, foreground=self.COLOR_TEXT)
+        style.map("Panel.TCheckbutton", background=[("active", self.COLOR_PANEL)], foreground=[("disabled", self.COLOR_MUTED)])
+        style.configure(
+            "Treeview",
+            background=self.COLOR_PANEL,
+            fieldbackground=self.COLOR_PANEL,
+            foreground=self.COLOR_TEXT,
+            bordercolor=self.COLOR_BORDER,
+            rowheight=24,
         )
-        ttk.Button(file_frame, text="Browse", command=self.browse_json_file).grid(row=0, column=2)
+        style.configure("Treeview.Heading", background="#202020", foreground=self.COLOR_MUTED, relief="flat", font=self.UI_FONT_SMALL)
+        style.map("Treeview", background=[("selected", "#094771")], foreground=[("selected", self.COLOR_TEXT)])
 
-        ttk.Label(file_frame, text="OR Paste JSON:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
-        ttk.Button(file_frame, text="Open JSON Input", command=self.open_json_input_window).grid(
-            row=1,
-            column=1,
-            sticky=tk.W,
-            pady=(10, 0),
+    def _create_source_bar(self, parent: ttk.Frame) -> None:
+        header = ttk.Frame(parent, style="Header.TFrame", padding=(14, 10))
+        header.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        header.columnconfigure(2, weight=1)
+
+        ttk.Label(header, text="ArrayMate", style="HeaderTitle.TLabel").grid(row=0, column=0, sticky=tk.W, padx=(0, 18))
+        ttk.Label(header, text="Step 1", style="PanelMuted.TLabel").grid(row=0, column=1, sticky=tk.W, padx=(0, 8))
+        ttk.Entry(header, textvariable=self.json_file_path).grid(row=0, column=2, sticky=(tk.W, tk.E), padx=(0, 8))
+        ttk.Button(header, text="Browse", command=self.browse_json_file).grid(row=0, column=3, padx=(0, 6))
+        self.paste_json_button = ttk.Button(header, text="Paste JSON", command=self.open_json_input_window)
+        self.paste_json_button.grid(row=0, column=4, padx=(0, 6))
+        ttk.Button(header, text="Parse", command=self.load_json_file, style="Accent.TButton").grid(row=0, column=5)
+
+    def _create_workspace(self, parent: ttk.Frame) -> None:
+        workspace = ttk.Frame(parent, style="App.TFrame")
+        workspace.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        workspace.columnconfigure(0, minsize=300, weight=0)
+        workspace.columnconfigure(1, weight=1)
+        workspace.columnconfigure(2, minsize=330, weight=0)
+        workspace.rowconfigure(0, weight=1)
+
+        self._create_structure_pane(workspace)
+        self._create_preview_pane(workspace)
+        self._create_right_pane(workspace)
+
+    def _create_structure_pane(self, parent: ttk.Frame) -> None:
+        left = ttk.Frame(parent, style="Panel.TFrame", padding=(0, 8, 0, 8))
+        left.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        left.rowconfigure(1, weight=1)
+        left.columnconfigure(0, weight=1)
+
+        ttk.Label(left, text="STEP 2 - PARSED STRUCTURE", style="PaneTitle.TLabel").grid(
+            row=0, column=0, sticky=(tk.W, tk.E), padx=12, pady=(0, 8)
         )
-
-    def _create_candidate_section(self, parent: ttk.Frame) -> None:
-        candidate_frame = ttk.LabelFrame(parent, text="Step 2: Pick a Table Candidate", padding="8")
-        candidate_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 8))
-        candidate_frame.columnconfigure(0, weight=1)
-        candidate_frame.columnconfigure(1, weight=1)
-        candidate_frame.rowconfigure(1, weight=1)
-
-        ttk.Label(candidate_frame, text="Discovered Arrays:").grid(row=0, column=0, columnspan=2, sticky=tk.W)
         self.array_tree = ttk.Treeview(
-            candidate_frame,
+            left,
             columns=("items", "columns", "status"),
             show="tree headings",
-            height=6,
             selectmode="browse",
         )
         self.array_tree.heading("#0", text="Path")
         self.array_tree.heading("items", text="Rows")
         self.array_tree.heading("columns", text="Columns")
         self.array_tree.heading("status", text="Status")
-        self.array_tree.column("#0", width=420, minwidth=220, stretch=True)
-        self.array_tree.column("items", width=80, minwidth=60, anchor=tk.E, stretch=False)
-        self.array_tree.column("columns", width=80, minwidth=60, anchor=tk.E, stretch=False)
-        self.array_tree.column("status", width=260, minwidth=140, stretch=True)
-        self.array_tree.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(4, 8))
+        self.array_tree.column("#0", width=165, minwidth=120, stretch=True)
+        self.array_tree.column("items", width=48, minwidth=42, anchor=tk.E, stretch=False)
+        self.array_tree.column("columns", width=42, minwidth=38, anchor=tk.E, stretch=False)
+        self.array_tree.column("status", width=72, minwidth=56, stretch=False)
+        self.array_tree.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(8, 0))
         self.array_tree.bind("<<TreeviewSelect>>", self.on_array_selected)
 
-        self.array_info_label = ttk.Label(candidate_frame, text="No JSON loaded")
-        self.array_info_label.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(0, 8))
+    def _create_preview_pane(self, parent: ttk.Frame) -> None:
+        center = ttk.Frame(parent, style="Center.TFrame", padding=14)
+        center.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+        center.columnconfigure(0, weight=1)
+        center.rowconfigure(2, weight=1)
 
-        options_frame = ttk.LabelFrame(candidate_frame, text="Quick Options", padding="8")
-        options_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N), padx=(0, 8))
+        self.array_info_label = ttk.Label(center, text="No JSON loaded", style="Muted.TLabel")
+        self.array_info_label.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+
+        self._create_inline_json_input(center)
+
+        preview_frame = ttk.Frame(center, style="Card.TFrame", padding=0)
+        preview_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        preview_frame.columnconfigure(0, weight=1)
+        preview_frame.rowconfigure(1, weight=1)
+
+        preview_header = ttk.Frame(preview_frame, style="Panel.TFrame", padding=(12, 9))
+        preview_header.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        preview_header.columnconfigure(1, weight=1)
+        ttk.Label(preview_header, text="Preview", style="Panel.TLabel").grid(row=0, column=0, sticky=tk.W)
+        self.preview_label = ttk.Label(preview_header, text="Select an exportable array to preview rows.", style="PanelMuted.TLabel")
+        self.preview_label.grid(row=0, column=1, sticky=tk.E)
+
+        self.preview_tree = ttk.Treeview(preview_frame, show="headings")
+        self.preview_tree.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+    def _create_inline_json_input(self, parent: ttk.Frame) -> None:
+        self.json_input_frame = ttk.Frame(parent, style="Card.TFrame", padding=0)
+        self.json_input_frame.columnconfigure(0, weight=1)
+        self.json_input_frame.rowconfigure(1, weight=1)
+
+        json_header = ttk.Frame(self.json_input_frame, style="Panel.TFrame", padding=(12, 9))
+        json_header.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        json_header.columnconfigure(0, weight=1)
+        ttk.Label(json_header, text="JSON Input", style="Panel.TLabel").grid(row=0, column=0, sticky=tk.W)
+        ttk.Button(json_header, text="Load JSON", command=self.load_json_from_text, style="Accent.TButton").grid(
+            row=0, column=1, padx=(0, 6)
+        )
+        ttk.Button(json_header, text="Clear", command=self.clear_json_text).grid(row=0, column=2, padx=(0, 6))
+        ttk.Button(json_header, text="Hide", command=self.open_json_input_window).grid(row=0, column=3)
+
+        input_body = ttk.Frame(self.json_input_frame, style="Panel.TFrame", padding=(12, 0, 12, 12))
+        input_body.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        input_body.columnconfigure(0, weight=1)
+        input_body.rowconfigure(0, weight=1)
+
+        self.json_text = tk.Text(
+            input_body,
+            wrap=tk.WORD,
+            font=self.CODE_FONT,
+            height=8,
+            background="#1b1b1b",
+            foreground=self.COLOR_TEXT,
+            insertbackground=self.COLOR_TEXT,
+            relief=tk.FLAT,
+            borderwidth=1,
+            highlightthickness=1,
+            highlightbackground=self.COLOR_BORDER,
+            highlightcolor=self.COLOR_ACCENT,
+        )
+        self.json_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        scrollbar = ttk.Scrollbar(input_body, orient=tk.VERTICAL, command=self.json_text.yview)
+        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        self.json_text.configure(yscrollcommand=scrollbar.set)
+
+    def _create_right_pane(self, parent: ttk.Frame) -> None:
+        right = ttk.Frame(parent, style="Panel.TFrame", padding=14)
+        right.grid(row=0, column=2, sticky=(tk.W, tk.E, tk.N, tk.S))
+        right.columnconfigure(0, weight=1)
+
+        ttk.Label(right, text="STEP 3 - TRANSFORM & EXPORT", style="PaneTitle.TLabel").grid(
+            row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10)
+        )
+        self._create_output_settings_section(right, row=1, column=0)
+        self._create_transform_section(right, row=2, column=0)
+        self._create_warning_section(right, row=3, column=0)
+
+    def _create_transform_section(self, parent: ttk.Frame, row: int, column: int) -> None:
+        options_frame = ttk.LabelFrame(parent, text="Transform Options", style="Section.TLabelframe", padding="10")
+        options_frame.grid(row=row, column=column, sticky=(tk.W, tk.E, tk.N), pady=(0, 12))
         options_frame.columnconfigure(0, weight=1)
+
+        ttk.Label(options_frame, text="Unfold level", style="PanelMuted.TLabel").grid(row=0, column=0, sticky=tk.W)
+        self.nested_candidate_combo = ttk.Combobox(
+            options_frame,
+            textvariable=self.selected_nested_candidate,
+            state="disabled",
+        )
+        self.nested_candidate_combo.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(4, 10))
+        self.nested_candidate_combo.bind("<<ComboboxSelected>>", self.refresh_selected_candidate)
+
         ttk.Checkbutton(
             options_frame,
             text="Stringify everything",
             variable=self.stringify_all,
             command=self.refresh_selected_candidate,
-        ).grid(
-            row=0,
-            column=0,
-            sticky=tk.W,
-        )
+            style="Panel.TCheckbutton",
+        ).grid(row=2, column=0, sticky=tk.W, pady=(0, 4))
         ttk.Checkbutton(
             options_frame,
             text="Stringify formulas",
             variable=self.stringify_formulas,
             command=self.refresh_selected_candidate,
-        ).grid(
-            row=1,
-            column=0,
-            sticky=tk.W,
-            pady=(4, 0),
-        )
+            style="Panel.TCheckbutton",
+        ).grid(row=3, column=0, sticky=tk.W, pady=(0, 4))
         self.parent_metadata_check = ttk.Checkbutton(
             options_frame,
             text="Include parent metadata",
             variable=self.include_parent_metadata,
             command=self.refresh_selected_candidate,
             state="disabled",
+            style="Panel.TCheckbutton",
         )
-        self.parent_metadata_check.grid(row=2, column=0, sticky=tk.W, pady=(4, 0))
-        ttk.Label(options_frame, text="Unfold level:").grid(row=3, column=0, sticky=tk.W, pady=(8, 0))
-        nested_action_frame = ttk.Frame(options_frame)
-        nested_action_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(4, 0))
-        nested_action_frame.columnconfigure(0, weight=1)
-        self.nested_candidate_combo = ttk.Combobox(
-            nested_action_frame,
-            textvariable=self.selected_nested_candidate,
-            state="disabled",
-            width=34,
+        self.parent_metadata_check.grid(row=4, column=0, sticky=tk.W, pady=(0, 10))
+
+        self.advanced_toggle_button = ttk.Button(
+            options_frame,
+            text="Show Advanced Options",
+            command=self.open_advanced_options,
         )
-        self.nested_candidate_combo.grid(row=0, column=0, sticky=(tk.W, tk.E))
-        self.nested_candidate_combo.bind("<<ComboboxSelected>>", self.refresh_selected_candidate)
-        ttk.Button(options_frame, text="Advanced Options", command=self.open_advanced_options).grid(
-            row=5,
-            column=0,
-            sticky=tk.W,
-            pady=(8, 0),
-        )
+        self.advanced_toggle_button.grid(row=5, column=0, sticky=(tk.W, tk.E))
 
-        self._create_output_settings_section(candidate_frame, row=3, column=1)
-
-        preview_frame = ttk.LabelFrame(candidate_frame, text="Preview", padding="8")
-        preview_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
-        preview_frame.columnconfigure(0, weight=1)
-
-        self.preview_tree = ttk.Treeview(preview_frame, show="headings", height=4)
-        self.preview_tree.grid(row=0, column=0, sticky=(tk.W, tk.E))
-        self.preview_label = ttk.Label(preview_frame, text="Select an exportable array to preview rows.")
-        self.preview_label.grid(row=1, column=0, sticky=tk.W, pady=(6, 0))
+        self.advanced_section_frame = ttk.Frame(options_frame, style="Panel.TFrame", padding=(0, 10, 0, 0))
+        self.advanced_section_frame.columnconfigure(0, weight=1)
+        self._create_column_actions_tab(self.advanced_section_frame)
 
     def _create_output_settings_section(self, parent: ttk.Frame, row: int = 3, column: int = 0) -> None:
-        output_frame = ttk.LabelFrame(parent, text="Step 3: Export", padding="8")
-        output_frame.grid(row=row, column=column, sticky=(tk.W, tk.E, tk.N))
-        output_frame.columnconfigure(1, weight=1)
+        output_frame = ttk.LabelFrame(parent, text="Export", style="Section.TLabelframe", padding="10")
+        output_frame.grid(row=row, column=column, sticky=(tk.W, tk.E, tk.N), pady=(0, 12))
+        output_frame.columnconfigure(0, weight=1)
 
-        ttk.Label(output_frame, text="Output Format:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(output_frame, text="Output format", style="PanelMuted.TLabel").grid(row=0, column=0, sticky=tk.W)
         format_combobox = ttk.Combobox(
             output_frame,
             textvariable=self.output_format,
             values=["Excel (.xlsx)", "CSV (.csv)", "JSON (.json)"],
             state="readonly",
-            width=15,
         )
-        format_combobox.grid(row=0, column=1, sticky=tk.W)
+        format_combobox.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(4, 10))
         format_combobox.bind("<<ComboboxSelected>>", self.on_format_selected)
 
-        ttk.Label(output_frame, text="Save Folder:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(8, 0))
-        ttk.Entry(output_frame, textvariable=self.output_folder, width=34).grid(
-            row=1,
-            column=1,
-            sticky=(tk.W, tk.E),
-            padx=(0, 10),
-            pady=(8, 0),
-        )
-        ttk.Button(output_frame, text="Browse", command=self.browse_output_folder).grid(row=1, column=2, pady=(8, 0))
-
-        ttk.Label(output_frame, text="File Name:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(8, 0))
-        filename_entry = ttk.Entry(output_frame, textvariable=self.output_filename, width=34)
-        filename_entry.grid(
-            row=2,
-            column=1,
-            sticky=(tk.W, tk.E),
-            padx=(0, 10),
-            pady=(8, 0),
-        )
+        ttk.Label(output_frame, text="File name", style="PanelMuted.TLabel").grid(row=2, column=0, sticky=tk.W)
+        filename_entry = ttk.Entry(output_frame, textvariable=self.output_filename)
+        filename_entry.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(4, 10))
         filename_entry.bind("<KeyRelease>", self.on_filename_edited)
         self.extension_label = ttk.Label(output_frame, text=".xlsx")
-        self.extension_label.grid(row=2, column=2, sticky=tk.W, pady=(8, 0))
+        self.extension_label.grid(row=3, column=1, sticky=tk.W, padx=(6, 0), pady=(4, 10))
+
+        ttk.Label(output_frame, text="Save folder", style="PanelMuted.TLabel").grid(row=4, column=0, sticky=tk.W)
+        folder_frame = ttk.Frame(output_frame, style="Panel.TFrame")
+        folder_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(4, 10))
+        folder_frame.columnconfigure(0, weight=1)
+        ttk.Entry(folder_frame, textvariable=self.output_folder).grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 6))
+        ttk.Button(folder_frame, text="Browse", command=self.browse_output_folder).grid(row=0, column=1)
 
         button_frame = ttk.Frame(output_frame)
-        button_frame.grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        button_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E))
+        button_frame.columnconfigure(0, weight=1)
         self.process_button = ttk.Button(
             button_frame,
             text="Convert to File",
             command=self.convert_to_file,
             state="disabled",
+            style="Accent.TButton",
         )
-        self.process_button.pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Clear All", command=self.clear_all).pack(side=tk.LEFT)
+        self.process_button.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 8))
+        ttk.Button(button_frame, text="Clear", command=self.clear_all).grid(row=0, column=1)
 
     def _create_process_buttons(self, parent: ttk.Frame) -> None:
-        button_frame = ttk.Frame(parent)
+        button_frame = ttk.Frame(parent, style="Panel.TFrame")
         button_frame.grid(row=4, column=0, pady=12)
 
         self.process_button = ttk.Button(
@@ -263,16 +374,23 @@ class ArrayMate:
         ttk.Button(button_frame, text="Clear All", command=self.clear_all).pack(side=tk.LEFT)
 
     def _create_status_section(self, parent: ttk.Frame) -> None:
-        status_frame = ttk.LabelFrame(parent, text="Status & Events", padding="10")
-        status_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 0))
+        status_frame = ttk.Frame(parent, style="Header.TFrame")
+        status_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
         status_frame.columnconfigure(0, weight=1)
         self.status_label = ttk.Label(
             status_frame,
             text="Ready to convert JSON arrays",
-            font=self.DEFAULT_FONT,
-            foreground="green",
+            style="Status.TLabel",
+            padding=(10, 4),
         )
-        self.status_label.grid(row=0, column=0, sticky=tk.W)
+        self.status_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
+
+    def _create_warning_section(self, parent: ttk.Frame, row: int, column: int) -> None:
+        warning_frame = ttk.LabelFrame(parent, text="Detected Warnings", style="Section.TLabelframe", padding="10")
+        warning_frame.grid(row=row, column=column, sticky=(tk.W, tk.E, tk.N))
+        warning_frame.columnconfigure(0, weight=1)
+        self.warning_label = ttk.Label(warning_frame, text="JSON not parsed yet", style="PanelMuted.TLabel", wraplength=280)
+        self.warning_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
     def clear_all(self) -> None:
         """Clear inputs and reset application state."""
@@ -296,6 +414,7 @@ class ArrayMate:
         self.array_tree.delete(*self.array_tree.get_children())
         self._clear_preview()
         self.array_info_label["text"] = "No JSON loaded"
+        self.warning_label["text"] = "JSON not parsed yet"
         self.status_label["text"] = "Ready to convert JSON arrays"
         self.status_label["foreground"] = "green"
         self.include_parent_metadata.set(False)
@@ -316,32 +435,14 @@ class ArrayMate:
             self.load_json_file()
 
     def open_json_input_window(self) -> None:
-        self.json_input_window = tk.Toplevel(self.root)
-        self.json_input_window.title("Paste JSON Data")
-        self.json_input_window.geometry("700x460")
-        self.json_input_window.resizable(True, True)
-        self.json_input_window.columnconfigure(0, weight=1)
-        self.json_input_window.rowconfigure(1, weight=1)
-
-        ttk.Label(
-            self.json_input_window,
-            text="Paste your JSON data below:",
-            font=self.DEFAULT_FONT,
-        ).grid(row=0, column=0, sticky=tk.W, padx=10, pady=(10, 5))
-
-        self.json_text = tk.Text(self.json_input_window, wrap=tk.WORD, font=self.CODE_FONT)
-        self.json_text.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=10, pady=(0, 10))
-
-        scrollbar = ttk.Scrollbar(self.json_input_window, orient=tk.VERTICAL, command=self.json_text.yview)
-        scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
-        self.json_text.configure(yscrollcommand=scrollbar.set)
-
-        button_frame = ttk.Frame(self.json_input_window)
-        button_frame.grid(row=2, column=0, columnspan=2, pady=(0, 10))
-        ttk.Button(button_frame, text="Load JSON", command=self.load_json_from_text).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Clear", command=self.clear_json_text).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Cancel", command=self.json_input_window.destroy).pack(side=tk.LEFT)
-        self.json_text.focus()
+        self.json_input_visible.set(not self.json_input_visible.get())
+        if self.json_input_visible.get():
+            self.json_input_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 12))
+            self.paste_json_button["text"] = "Hide JSON"
+            self.json_text.focus()
+        else:
+            self.json_input_frame.grid_remove()
+            self.paste_json_button["text"] = "Paste JSON"
 
     def load_json_from_text(self) -> None:
         json_text = self.json_text.get("1.0", tk.END).strip()
@@ -355,7 +456,9 @@ class ArrayMate:
             self.json_file_path.set("")
             self._apply_load_result(load_result, "JSON data")
             if load_result.array_candidates:
-                self.json_input_window.destroy()
+                self.json_input_visible.set(False)
+                self.json_input_frame.grid_remove()
+                self.paste_json_button["text"] = "Paste JSON"
             else:
                 messagebox.showerror("Error", "No arrays found in the JSON data")
         except json.JSONDecodeError as e:
@@ -487,13 +590,16 @@ class ArrayMate:
                     raise ArrayMateCoreError("Selected array is invalid")
                 preview = build_table_preview(array_data, effective_candidate.display_path)
                 self.array_info_label["text"] = self._candidate_detail_text(candidate, effective_candidate, preview)
+                self.warning_label["text"] = self._warning_text(effective_candidate, preview)
                 self._render_preview(preview)
                 self.process_button["state"] = "normal"
             except ArrayMateCoreError as e:
+                self.warning_label["text"] = str(e)
                 self._clear_preview(str(e))
                 self.process_button["state"] = "disabled"
         else:
             self.array_info_label["text"] = self._candidate_detail_text(candidate, effective_candidate)
+            self.warning_label["text"] = effective_candidate.warning or "This array is not exportable as a table."
             self._clear_preview(effective_candidate.warning or "This array is not exportable as a table.")
             self.process_button["state"] = "disabled"
 
@@ -515,6 +621,15 @@ class ArrayMate:
         if effective_candidate.warning:
             details.append(effective_candidate.warning)
         return " | ".join(details)
+
+    def _warning_text(self, candidate: ArrayCandidate, preview: TablePreview) -> str:
+        warnings = ["JSON parsed successfully"]
+        if candidate.warning:
+            warnings.append(candidate.warning)
+        warnings.extend(preview.warnings)
+        if self.stringify_formulas.get():
+            warnings.append("Formula protection enabled")
+        return "\n".join(warnings)
 
     def _update_parent_metadata_option(self, candidate: ArrayCandidate, is_new_selection: bool) -> None:
         supports_parent_metadata = self._supports_parent_metadata(candidate)
@@ -597,58 +712,33 @@ class ArrayMate:
         self.preview_label["text"] = message
 
     def open_advanced_options(self) -> None:
-        if self._advanced_options_is_open():
-            self.advanced_window.focus()
+        self.advanced_options_visible.set(not self.advanced_options_visible.get())
+        if self.advanced_section_frame is None:
             return
 
-        self.advanced_window = tk.Toplevel(self.root)
-        self.advanced_window.title("Advanced Options")
-        self.advanced_window.geometry("520x300")
-        self.advanced_window.resizable(False, False)
-        self.advanced_window.protocol("WM_DELETE_WINDOW", self._close_advanced_options)
-
-        notebook = ttk.Notebook(self.advanced_window)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        column_frame = ttk.Frame(notebook, padding="10")
-        additional_frame = ttk.Frame(notebook, padding="10")
-        notebook.add(column_frame, text="Column Actions")
-        notebook.add(additional_frame, text="Additional Actions")
-
-        self._create_column_actions_tab(column_frame)
-        ttk.Label(additional_frame, text="Placeholder for future table-level actions.").grid(row=0, column=0, sticky=tk.W)
-        self._refresh_column_action_columns()
-
-    def _close_advanced_options(self) -> None:
-        if self.advanced_window is not None:
-            self.advanced_window.destroy()
-            self.advanced_window = None
-        self.advanced_column_combo = None
-        self.advanced_type_combo = None
-
-    def _advanced_options_is_open(self) -> bool:
-        try:
-            return self.advanced_window is not None and bool(self.advanced_window.winfo_exists())
-        except tk.TclError:
-            self.advanced_window = None
-            self.advanced_column_combo = None
-            self.advanced_type_combo = None
-            return False
+        if self.advanced_options_visible.get():
+            self.advanced_section_frame.grid(row=6, column=0, sticky=(tk.W, tk.E))
+            self.advanced_toggle_button["text"] = "Hide Advanced Options"
+            self._refresh_column_action_columns()
+        else:
+            self.advanced_section_frame.grid_remove()
+            self.advanced_toggle_button["text"] = "Show Advanced Options"
 
     def _create_column_actions_tab(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(1, weight=1)
 
-        ttk.Label(parent, text="Column:").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
+        ttk.Label(parent, text="Column Actions", style="Panel.TLabel").grid(row=0, column=0, columnspan=2, sticky=tk.W)
+        ttk.Label(parent, text="Column", style="PanelMuted.TLabel").grid(row=1, column=0, sticky=tk.W, padx=(0, 8), pady=(8, 0))
         self.advanced_column_combo = ttk.Combobox(
             parent,
             textvariable=self.advanced_column,
             state="readonly",
             width=34,
         )
-        self.advanced_column_combo.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        self.advanced_column_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=(8, 0))
         self.advanced_column_combo.bind("<<ComboboxSelected>>", self._load_column_action)
 
-        ttk.Label(parent, text="Data Type:").grid(row=1, column=0, sticky=tk.W, padx=(0, 8), pady=(8, 0))
+        ttk.Label(parent, text="Data Type", style="PanelMuted.TLabel").grid(row=2, column=0, sticky=tk.W, padx=(0, 8), pady=(8, 0))
         self.advanced_type_combo = ttk.Combobox(
             parent,
             textvariable=self.advanced_type,
@@ -656,24 +746,30 @@ class ArrayMate:
             state="readonly",
             width=18,
         )
-        self.advanced_type_combo.grid(row=1, column=1, sticky=tk.W, pady=(8, 0))
+        self.advanced_type_combo.grid(row=2, column=1, sticky=tk.W, pady=(8, 0))
 
-        ttk.Label(parent, text="Find:").grid(row=2, column=0, sticky=tk.W, padx=(0, 8), pady=(8, 0))
-        ttk.Entry(parent, textvariable=self.advanced_find).grid(row=2, column=1, sticky=(tk.W, tk.E), pady=(8, 0))
+        ttk.Label(parent, text="Find", style="PanelMuted.TLabel").grid(row=3, column=0, sticky=tk.W, padx=(0, 8), pady=(8, 0))
+        ttk.Entry(parent, textvariable=self.advanced_find).grid(row=3, column=1, sticky=(tk.W, tk.E), pady=(8, 0))
 
-        ttk.Label(parent, text="Replace:").grid(row=3, column=0, sticky=tk.W, padx=(0, 8), pady=(8, 0))
-        ttk.Entry(parent, textvariable=self.advanced_replace).grid(row=3, column=1, sticky=(tk.W, tk.E), pady=(8, 0))
+        ttk.Label(parent, text="Replace", style="PanelMuted.TLabel").grid(row=4, column=0, sticky=tk.W, padx=(0, 8), pady=(8, 0))
+        ttk.Entry(parent, textvariable=self.advanced_replace).grid(row=4, column=1, sticky=(tk.W, tk.E), pady=(8, 0))
 
         button_frame = ttk.Frame(parent)
-        button_frame.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(12, 0))
+        button_frame.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(12, 0))
         ttk.Button(button_frame, text="Apply Column Action", command=self._save_column_action).pack(side=tk.LEFT, padx=(0, 8))
         ttk.Button(button_frame, text="Clear Column Action", command=self._clear_column_action).pack(side=tk.LEFT)
 
-        ttk.Label(parent, textvariable=self.advanced_status).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
+        ttk.Label(parent, textvariable=self.advanced_status, style="PanelMuted.TLabel", wraplength=280).grid(
+            row=6, column=0, columnspan=2, sticky=tk.W, pady=(10, 0)
+        )
+        ttk.Label(parent, text="Additional Actions", style="Panel.TLabel").grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=(14, 0))
+        ttk.Label(parent, text="Placeholder for future table-level actions.", style="PanelMuted.TLabel").grid(
+            row=8, column=0, columnspan=2, sticky=tk.W, pady=(4, 0)
+        )
 
     def _refresh_column_action_columns(self) -> None:
         combo = self.advanced_column_combo
-        if combo is None or not self._advanced_options_is_open():
+        if combo is None:
             return
 
         try:

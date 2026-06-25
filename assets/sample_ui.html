@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>ArrayMate UI Mockup</title>
+<style>
+  :root {
+    --bg: #1e1e1e;
+    --panel: #252526;
+    --panel-2: #2d2d30;
+    --border: #3c3c3c;
+    --text: #d4d4d4;
+    --muted: #9da5b4;
+    --accent: #007acc;
+    --green: #4ec9b0;
+    --yellow: #dcdcaa;
+    --red: #f48771;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 56px 1fr 26px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+
+  header h1 {
+    font-size: 18px;
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .source-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+
+  input, select, button {
+    background: #1b1b1b;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 8px;
+    border-radius: 4px;
+  }
+
+  button {
+    background: var(--panel-2);
+    cursor: pointer;
+  }
+
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  main {
+    display: grid;
+    grid-template-columns: 300px 1fr 330px;
+    min-height: 0;
+  }
+
+  aside, section {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .left {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+  }
+
+  .center {
+    background: var(--bg);
+    padding: 14px;
+  }
+
+  .right {
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    padding: 14px;
+  }
+
+  .pane-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 12px;
+    letter-spacing: .05em;
+  }
+
+  .tree {
+    font-size: 13px;
+    padding-bottom: 20px;
+  }
+
+  .tree-item {
+    padding: 4px 10px 4px 18px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: default;
+  }
+
+  .tree-item.active {
+    background: #094771;
+  }
+
+  .tree-item:hover {
+    background: #2a2d2e;
+  }
+
+  .indent-1 { padding-left: 34px; }
+  .indent-2 { padding-left: 50px; }
+  .indent-3 { padding-left: 66px; }
+
+  .chev {
+    color: var(--muted);
+    width: 12px;
+  }
+
+  .array-icon {
+    color: var(--yellow);
+  }
+
+  .blob {
+    font-size: 11px;
+    color: white;
+    background: #3a3d41;
+    border-radius: 999px;
+    padding: 1px 6px;
+    margin-left: auto;
+  }
+
+  .blob.green {
+    background: #137c5a;
+  }
+
+  .blob.warn {
+    background: #7c5f13;
+  }
+
+  .path {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .preview-card {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .preview-header {
+    padding: 10px 12px;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th, td {
+    border-bottom: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  th {
+    color: var(--muted);
+    font-weight: 500;
+    background: #202020;
+  }
+
+  .options {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(3, max-content);
+    gap: 12px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .panel-block {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+
+  .panel-block h3 {
+    margin: 0;
+    padding: 10px 12px;
+    background: var(--panel-2);
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-body {
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+  }
+
+  label {
+    font-size: 13px;
+    color: var(--muted);
+    display: grid;
+    gap: 5px;
+  }
+
+  .statusbar {
+    background: var(--accent);
+    color: white;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 18px;
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>ArrayMate</h1>
+
+  <div class="source-bar">
+    <strong>Step 1:</strong>
+    <input style="flex:1" value="sample_orders.json" />
+    <button>Browse</button>
+    <button>Paste JSON</button>
+    <button class="primary">Parse</button>
+  </div>
+</header>
+
+<main>
+  <aside class="left">
+    <div class="pane-title">Step 2 · Parsed Structure</div>
+
+    <div class="tree">
+      <div class="tree-item">
+        <span class="chev">▾</span>
+        <span class="array-icon">[]</span>
+        users
+        <span class="blob green">3 rows</span>
+        <span class="blob">7 cols</span>
+      </div>
+
+      <div class="tree-item">
+        <span class="chev">▾</span>
+        <span class="array-icon">[]</span>
+        products
+        <span class="blob green">3 rows</span>
+        <span class="blob">6 cols</span>
+      </div>
+
+      <div class="tree-item active">
+        <span class="chev">▾</span>
+        <span class="array-icon">[]</span>
+        orders
+        <span class="blob warn">nested</span>
+      </div>
+
+      <div class="tree-item indent-1">
+        <span class="chev">▾</span>
+        <span class="array-icon">[]</span>
+        orders[*].items
+        <span class="blob green">3 rows</span>
+        <span class="blob">4 cols</span>
+      </div>
+
+      <div class="tree-item indent-2">
+        <span class="chev">•</span>
+        <span class="array-icon">[]</span>
+        descriptions
+        <span class="blob green">3 rows</span>
+        <span class="blob">2 cols</span>
+      </div>
+
+      <div class="tree-item">
+        <span class="chev">▾</span>
+        <span class="array-icon">[]</span>
+        departments
+        <span class="blob green">3 rows</span>
+        <span class="blob">5 cols</span>
+      </div>
+    </div>
+  </aside>
+
+  <section class="center">
+    <div class="path">
+      Selected: <strong>orders[*].items</strong> · exportable · contains nested arrays
+    </div>
+
+    <div class="preview-card">
+      <div class="preview-header">
+        <strong>Preview</strong>
+        <span>3 rows · 4 columns</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>product_id</th>
+            <th>quantity</th>
+            <th>price</th>
+            <th>descriptions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>P001</td>
+            <td>1</td>
+            <td>999.99</td>
+            <td>[nested array]</td>
+          </tr>
+          <tr>
+            <td>P002</td>
+            <td>1</td>
+            <td>29.99</td>
+            <td>[nested array]</td>
+          </tr>
+          <tr>
+            <td>P003</td>
+            <td>1</td>
+            <td>199.99</td>
+            <td>[nested array]</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="options">
+      <label><input type="checkbox"> Stringify everything</label>
+      <label><input type="checkbox" checked> Stringify formulas</label>
+      <label><input type="checkbox"> Include parent metadata</label>
+    </div>
+  </section>
+
+  <aside class="right">
+    <div class="pane-title">Step 3 · Transform & Export</div>
+
+    <div class="panel-block">
+      <h3>Export</h3>
+      <div class="panel-body">
+        <label>
+          Output format
+          <select>
+            <option>Excel (.xlsx)</option>
+            <option>CSV (.csv)</option>
+            <option>JSON Lines (.jsonl)</option>
+          </select>
+        </label>
+
+        <label>
+          File name
+          <input value="orders_items_20260624" />
+        </label>
+
+        <label>
+          Save folder
+          <input value="C:\Users\Michael\Exports" />
+        </label>
+
+        <button class="primary">Convert to File</button>
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <h3>Transform Options</h3>
+      <div class="panel-body">
+        <label>
+          Unfold level
+          <select>
+            <option>None</option>
+            <option>1 level</option>
+            <option>2 levels</option>
+            <option>All possible</option>
+          </select>
+        </label>
+
+        <label><input type="checkbox"> Flatten nested objects</label>
+        <label><input type="checkbox"> Expand nested arrays</label>
+        <label><input type="checkbox" checked> Protect Excel formulas</label>
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <h3>Detected Warnings</h3>
+      <div class="panel-body">
+        <div>⚠ Nested arrays found</div>
+        <div>⚠ Possible Excel formulas found</div>
+        <div>✓ JSON parsed successfully</div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<footer class="statusbar">
+  <span>Ready</span>
+  <span>6 array candidates found</span>
+  <span>Selected: orders[*].items</span>
+</footer>
+
+</body>
+</html>
