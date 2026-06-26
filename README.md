@@ -13,7 +13,7 @@ A GUI application that converts JSON arrays to multiple formats (Excel, CSV, JSO
 - **Array Selection**: Choose which array to convert
 - **Multiple Output Formats**: Export to Excel (.xlsx), CSV (.csv), or JSON (.json)
 - **Auto-Open**: Automatically opens converted files or shows file location
-- **User-Friendly GUI**: Simple and intuitive interface
+- **Modern Desktop GUI**: PySide6/Qt interface with no-install executable builds
 
 ## Installation
 
@@ -50,8 +50,8 @@ python app.py
 ```
 
 2. **Step 1**: Choose JSON source:
-   - **Option A**: Click "Browse" to select a JSON file
-   - **Option B**: Click "Open JSON Input" to paste JSON directly (e.g., from Postman)
+   - **Option A**: Click "Browse" to select a JSON file; it parses immediately
+   - **Option B**: Paste JSON directly in the inline JSON input and click "Load JSON"
 3. **Step 2**: Choose which array to convert from the dropdown
 4. **Step 3**: Set the output location:
    - Select output format (Excel, CSV, or JSON)
@@ -70,7 +70,7 @@ python app.py
 - Python 3.7+
 - pandas
 - openpyxl
-- tkinter (usually comes with Python)
+- PySide6
 
 ## How it Works
 

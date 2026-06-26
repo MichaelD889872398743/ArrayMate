@@ -8,6 +8,7 @@ import os
 import platform
 import subprocess
 import tkinter as tk
+import webbrowser
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Optional
 
@@ -28,6 +29,7 @@ class ArrayMate:
     """Desktop UI for converting JSON arrays to table files."""
 
     NO_UNFOLD_LABEL = "Keep selected table"
+    REPOSITORY_URL = "https://github.com/MichaelD889872398743/ArrayMate"
     WINDOW_WIDTH = 1000
     WINDOW_HEIGHT = 660
     DEFAULT_FONT = ("Arial", 10)
@@ -76,7 +78,7 @@ class ArrayMate:
         self.include_parent_metadata = tk.BooleanVar(value=False)
         self.selected_nested_candidate = tk.StringVar()
         self.advanced_options_visible = tk.BooleanVar(value=False)
-        self.json_input_visible = tk.BooleanVar(value=False)
+        self.json_input_visible = tk.BooleanVar(value=True)
         self.advanced_column = tk.StringVar()
         self.advanced_type = tk.StringVar(value="Keep")
         self.advanced_find = tk.StringVar()
@@ -122,6 +124,13 @@ class ArrayMate:
         style.configure("Status.TLabel", background=self.COLOR_ACCENT, foreground="white", font=self.UI_FONT_SMALL)
         style.configure("TEntry", fieldbackground="#1b1b1b", foreground=self.COLOR_TEXT, insertcolor=self.COLOR_TEXT, bordercolor=self.COLOR_BORDER)
         style.configure("TCombobox", fieldbackground="#1b1b1b", foreground=self.COLOR_TEXT, arrowcolor=self.COLOR_TEXT, bordercolor=self.COLOR_BORDER)
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", "#1b1b1b")],
+            selectbackground=[("readonly", "#1b1b1b")],
+            selectforeground=[("readonly", self.COLOR_TEXT)],
+            foreground=[("readonly", self.COLOR_TEXT)],
+        )
         style.configure("TButton", background=self.COLOR_PANEL_2, foreground=self.COLOR_TEXT, bordercolor=self.COLOR_BORDER, focusthickness=0)
         style.map("TButton", background=[("active", "#3a3d41")])
         style.configure("Accent.TButton", background=self.COLOR_ACCENT, foreground="white", bordercolor=self.COLOR_ACCENT)
@@ -150,9 +159,6 @@ class ArrayMate:
         ttk.Label(header, text="Step 1", style="PanelMuted.TLabel").grid(row=0, column=1, sticky=tk.W, padx=(0, 8))
         ttk.Entry(header, textvariable=self.json_file_path).grid(row=0, column=2, sticky=(tk.W, tk.E), padx=(0, 8))
         ttk.Button(header, text="Browse", command=self.browse_json_file).grid(row=0, column=3, padx=(0, 6))
-        self.paste_json_button = ttk.Button(header, text="Paste JSON", command=self.open_json_input_window)
-        self.paste_json_button.grid(row=0, column=4, padx=(0, 6))
-        ttk.Button(header, text="Parse", command=self.load_json_file, style="Accent.TButton").grid(row=0, column=5)
 
     def _create_workspace(self, parent: ttk.Frame) -> None:
         workspace = ttk.Frame(parent, style="App.TFrame")
@@ -198,8 +204,18 @@ class ArrayMate:
         center.columnconfigure(0, weight=1)
         center.rowconfigure(2, weight=1)
 
-        self.array_info_label = ttk.Label(center, text="No JSON loaded", style="Muted.TLabel")
-        self.array_info_label.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        info_frame = ttk.Frame(center, style="Center.TFrame")
+        info_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        info_frame.columnconfigure(0, weight=1)
+        self.array_info_label = ttk.Label(info_frame, text="No JSON loaded", style="Muted.TLabel")
+        self.array_info_label.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
+        self.paste_json_button = ttk.Button(
+            info_frame,
+            text="Hide JSON",
+            command=self.open_json_input_window,
+            style="Accent.TButton",
+        )
+        self.paste_json_button.grid(row=0, column=1, sticky=tk.E)
 
         self._create_inline_json_input(center)
 
@@ -231,7 +247,6 @@ class ArrayMate:
             row=0, column=1, padx=(0, 6)
         )
         ttk.Button(json_header, text="Clear", command=self.clear_json_text).grid(row=0, column=2, padx=(0, 6))
-        ttk.Button(json_header, text="Hide", command=self.open_json_input_window).grid(row=0, column=3)
 
         input_body = ttk.Frame(self.json_input_frame, style="Panel.TFrame", padding=(12, 0, 12, 12))
         input_body.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -256,6 +271,7 @@ class ArrayMate:
         scrollbar = ttk.Scrollbar(input_body, orient=tk.VERTICAL, command=self.json_text.yview)
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         self.json_text.configure(yscrollcommand=scrollbar.set)
+        self._set_json_input_visible(self.json_input_visible.get())
 
     def _create_right_pane(self, parent: ttk.Frame) -> None:
         right = ttk.Frame(parent, style="Panel.TFrame", padding=14)
@@ -268,6 +284,7 @@ class ArrayMate:
         self._create_output_settings_section(right, row=1, column=0)
         self._create_transform_section(right, row=2, column=0)
         self._create_warning_section(right, row=3, column=0)
+        self._create_project_section(right, row=4, column=0)
 
     def _create_transform_section(self, parent: ttk.Frame, row: int, column: int) -> None:
         options_frame = ttk.LabelFrame(parent, text="Transform Options", style="Section.TLabelframe", padding="10")
@@ -330,6 +347,7 @@ class ArrayMate:
             values=["Excel (.xlsx)", "CSV (.csv)", "JSON (.json)"],
             state="readonly",
         )
+        format_combobox.set(self.output_format.get())
         format_combobox.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(4, 10))
         format_combobox.bind("<<ComboboxSelected>>", self.on_format_selected)
 
@@ -392,6 +410,17 @@ class ArrayMate:
         self.warning_label = ttk.Label(warning_frame, text="JSON not parsed yet", style="PanelMuted.TLabel", wraplength=280)
         self.warning_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
+    def _create_project_section(self, parent: ttk.Frame, row: int, column: int) -> None:
+        project_frame = ttk.LabelFrame(parent, text="Project", style="Section.TLabelframe", padding="10")
+        project_frame.grid(row=row, column=column, sticky=(tk.W, tk.E, tk.S), pady=(12, 0))
+        project_frame.columnconfigure(0, weight=1)
+        ttk.Label(project_frame, text="ArrayMate on GitHub", style="PanelMuted.TLabel").grid(
+            row=0, column=0, sticky=tk.W, pady=(0, 6)
+        )
+        ttk.Button(project_frame, text="Open Repository", command=self.open_repository).grid(
+            row=1, column=0, sticky=(tk.W, tk.E)
+        )
+
     def clear_all(self) -> None:
         """Clear inputs and reset application state."""
         self.json_file_path.set("")
@@ -417,6 +446,8 @@ class ArrayMate:
         self.warning_label["text"] = "JSON not parsed yet"
         self.status_label["text"] = "Ready to convert JSON arrays"
         self.status_label["foreground"] = "green"
+        self.clear_json_text()
+        self._set_json_input_visible(True)
         self.include_parent_metadata.set(False)
         self.stringify_all.set(False)
         self.stringify_formulas.set(False)
@@ -435,14 +466,21 @@ class ArrayMate:
             self.load_json_file()
 
     def open_json_input_window(self) -> None:
-        self.json_input_visible.set(not self.json_input_visible.get())
-        if self.json_input_visible.get():
+        self._set_json_input_visible(not self.json_input_visible.get())
+
+    def open_repository(self) -> None:
+        webbrowser.open(self.REPOSITORY_URL)
+        self.status_label["text"] = "Repository opened in browser"
+
+    def _set_json_input_visible(self, visible: bool) -> None:
+        self.json_input_visible.set(visible)
+        if visible:
             self.json_input_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 12))
             self.paste_json_button["text"] = "Hide JSON"
             self.json_text.focus()
         else:
             self.json_input_frame.grid_remove()
-            self.paste_json_button["text"] = "Paste JSON"
+            self.paste_json_button["text"] = "Show JSON"
 
     def load_json_from_text(self) -> None:
         json_text = self.json_text.get("1.0", tk.END).strip()
@@ -456,9 +494,7 @@ class ArrayMate:
             self.json_file_path.set("")
             self._apply_load_result(load_result, "JSON data")
             if load_result.array_candidates:
-                self.json_input_visible.set(False)
-                self.json_input_frame.grid_remove()
-                self.paste_json_button["text"] = "Paste JSON"
+                self._set_json_input_visible(False)
             else:
                 messagebox.showerror("Error", "No arrays found in the JSON data")
         except json.JSONDecodeError as e:
@@ -476,6 +512,8 @@ class ArrayMate:
             self._apply_load_result(load_result, "JSON file")
             if not load_result.array_candidates:
                 messagebox.showerror("Error", "No arrays found in JSON file")
+            else:
+                self._set_json_input_visible(False)
         except json.JSONDecodeError as e:
             messagebox.showerror("Error", f"Invalid JSON file: {str(e)}")
             self.status_label["text"] = "Error: Invalid JSON file"

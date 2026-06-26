@@ -1,6 +1,6 @@
 """Run ArrayMate with ``python -m arraymate``."""
 
-from .desktop import main
+from .qt_desktop import main
 
 
 if __name__ == "__main__":

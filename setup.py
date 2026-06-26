@@ -39,10 +39,10 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "array-mate=arraymate.desktop:main",
+            "array-mate=arraymate.qt_desktop:main",
         ],
     },
-    keywords="json, excel, csv, converter, gui, tkinter, pandas",
+    keywords="json, excel, csv, converter, gui, qt, pyside6, pandas",
     project_urls={
         "Bug Reports": "https://github.com/MichaelD889872398743/array-mate/issues",
         "Source": "https://github.com/MichaelD889872398743/array-mate",

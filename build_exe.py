@@ -25,19 +25,20 @@ def build_executable():
     
     # PyInstaller command
     cmd = [
-        "pyinstaller",
+        sys.executable,
+        "-m",
+        "PyInstaller",
         "--onefile",                    
         "--windowed",                   
         "--name=ArrayMate",             
         "--icon=icon.ico",
         "--version-file=version.txt",              
-        "--add-data=sample_data.json;.", 
+        "--collect-all=PySide6",
         "--hidden-import=pandas",
         "--hidden-import=openpyxl",
-        "--hidden-import=tkinter",
-        "--hidden-import=tkinter.ttk",
-        "--hidden-import=tkinter.filedialog",
-        "--hidden-import=tkinter.messagebox",
+        "--hidden-import=PySide6.QtCore",
+        "--hidden-import=PySide6.QtGui",
+        "--hidden-import=PySide6.QtWidgets",
         "app.py"
     ]
     
