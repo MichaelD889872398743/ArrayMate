@@ -283,6 +283,10 @@ def write_portable_launchers() -> None:
                 "ArrayMate.exe. Some managed Windows laptops block unsigned generated",
                 "executables, while still allowing trusted Python runtimes to start.",
                 "",
+                "Windows may still show an Unknown publisher or SmartScreen warning",
+                "because ArrayMate is not code-signed. This is expected for the",
+                "current open-source release.",
+                "",
                 "Keep the python and app folders next to Run ArrayMate.bat.",
                 "",
             ]

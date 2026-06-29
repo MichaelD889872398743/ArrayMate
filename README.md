@@ -6,7 +6,7 @@ It can load JSON from a file or from pasted text, detect table-like arrays, prev
 
 **Author:** Michael Dehne  
 **License:** MIT License  
-**Version:** 2.0.0
+**Version:** 2.0.1
 
 ## Features
 
@@ -25,15 +25,15 @@ It can load JSON from a file or from pasted text, detect table-like arrays, prev
 1. Go to the [Releases](https://github.com/MichaelD889872398743/ArrayMate/releases) page.
 2. Download the latest `ArrayMate-v*-Windows-PortablePython.zip`.
 3. Extract the zip file.
-4. Run `ArrayMate/ArrayMate.exe`.
+4. Run `ArrayMate/Run ArrayMate.bat`.
 
-### Windows SmartScreen
+### Windows Security Notice
 
-The app is currently unsigned, so Windows may show a "Windows protected your PC" warning the first time you run it.
+ArrayMate is currently unsigned, so Windows may show an "Unknown publisher" or "Windows protected your PC" warning the first time you run it.
 
-Click **More info**, then **Run anyway**.
+This is expected for a new open-source tool without a code-signing certificate. If Windows SmartScreen appears, click **More info**, then **Run anyway**.
 
-The executable is built from the source code in this repository, so you can inspect or build it yourself.
+The release is built from the source code in this repository, so you can inspect or build it yourself.
 
 ## Run From Source
 

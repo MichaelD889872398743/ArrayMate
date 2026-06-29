@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
+## [v2.0.1] - 2026-06-29
+
+### Changed
+- Version number to test the whole build process.
 
 ## [v2.0.0] - 2026-06-29
 

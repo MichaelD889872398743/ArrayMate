@@ -12,7 +12,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="array-mate",
-    version="2.0.0",
+    version="2.0.1",
     author="Michael Dehne",
     author_email="",  # Add your email if desired
     description="A GUI application that converts JSON arrays to multiple formats (Excel, CSV, JSON)",
