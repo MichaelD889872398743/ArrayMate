@@ -23,7 +23,7 @@ It can load JSON from a file or from pasted text, detect table-like arrays, prev
 ## Download
 
 1. Go to the [Releases](https://github.com/MichaelD889872398743/ArrayMate/releases) page.
-2. Download the latest `ArrayMate-v*-Windows.zip`.
+2. Download the latest `ArrayMate-v*-Windows-PortablePython.zip`.
 3. Extract the zip file.
 4. Run `ArrayMate/ArrayMate.exe`.
 
@@ -143,6 +143,27 @@ The PyInstaller build uses `ArrayMate.spec` as the canonical configuration. It e
 - `assets/arraymate_tray_icon.png`
 
 Successful builds place the portable app in `release/ArrayMate/` and create `ArrayMate-v*-Windows-*.zip`.
+
+## Publishing A GitHub Release
+
+Releases are created from version tags. Generated zip files should not be committed to git.
+
+1. Update the version in:
+   - `arraymate/__init__.py`
+   - `setup.py`
+   - `version.txt`
+   - `README.md`
+   - `CHANGELOG.md`
+2. Commit the version change.
+3. Create and push a matching tag:
+
+```bash
+git tag v1.0.11
+git push origin rewrite/v2
+git push origin v1.0.11
+```
+
+The GitHub Actions workflow builds `ArrayMate-v*-Windows-PortablePython.zip` and attaches it to a new release under [Releases](https://github.com/MichaelD889872398743/ArrayMate/releases).
 
 ## Project Structure
 

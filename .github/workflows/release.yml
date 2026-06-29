@@ -1,97 +1,58 @@
-name: Build and Release ArrayMate
+name: Build Release
 
 on:
   push:
     tags:
-      - 'v*'  # Triggers only when a tag like v1.0.0 is pushed
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  build-release:
+    name: Build portable Windows package
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
+      - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install -r requirements-build.txt
 
-      - name: Build executable
-        run: python build_exe.py
-
-      - name: Prepare release folder and zip
+      - name: Verify tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         run: |
-          # Clean previous release folder if it exists
-          if (Test-Path release) {
-            Remove-Item release -Recurse -Force
+          $tagVersion = "${{ github.ref_name }}".TrimStart("v")
+          $packageVersion = python -c "import ast; tree=ast.parse(open('arraymate/__init__.py', encoding='utf-8').read()); print(next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign) for t in n.targets if getattr(t, 'id', '') == '__version__'))"
+          if ($tagVersion -ne $packageVersion) {
+            throw "Tag version $tagVersion does not match package version $packageVersion"
           }
-          New-Item -ItemType Directory -Path release
 
-          # Copy build output
-          Copy-Item dist\ArrayMate.exe release\
+      - name: Build portable package
+        run: python build_exe.py portable-python
 
-          # Copy other necessary files
-          Copy-Item sample_data.json release\
-          Copy-Item README.md release\
-          Copy-Item LICENSE release\
-          Copy-Item requirements.txt release\
-
-          # Create zip file with the tag name in the filename
-          $zipName = "ArrayMate-${{ github.ref_name }}-Windows.zip"
-          Compress-Archive -Path release\* -DestinationPath $zipName
-
-      - name: Upload release artifacts
+      - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ArrayMate-Release
-          path: |
-            ArrayMate-${{ github.ref_name }}-Windows.zip
-            release/ArrayMate.exe
+          name: ArrayMate-Windows-PortablePython
+          path: ArrayMate-v*-Windows-PortablePython.zip
+          if-no-files-found: error
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
-          files: ArrayMate-${{ github.ref_name }}-Windows.zip
-          body: |
-            ## ArrayMate v${{ github.ref_name }}
-
-            ### What's New
-            - Initial release of ArrayMate
-            - GUI application for converting JSON arrays to multiple formats
-            - Support for Excel, CSV, and JSON output formats
-            - Direct JSON input and file selection
-            - Auto-open converted files
-
-            ### Installation
-            1. Download the zip file
-            2. Extract to a folder
-            3. Run `ArrayMate.exe`
-
-            ### Features
-            - **Multiple JSON Sources**: Browse JSON files OR paste JSON directly
-            - **Array Detection**: Automatically finds all arrays in the JSON structure
-            - **Multiple Output Formats**: Export to Excel (.xlsx), CSV (.csv), or JSON (.json)
-            - **Auto-Open**: Automatically opens converted files
-            - **User-Friendly GUI**: Simple and intuitive interface
-
-            ### System Requirements
-            - Windows 10 or later
-            - No additional software required (standalone executable)
-
-            ### License
-            MIT License - see LICENSE file for details
-
-            ### Author
-            Michael Dehne - [GitHub Profile](https://github.com/MichaelD889872398743)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          name: ArrayMate ${{ github.ref_name }}
+          files: ArrayMate-v*-Windows-PortablePython.zip
+          generate_release_notes: true
