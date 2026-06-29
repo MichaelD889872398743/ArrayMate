@@ -1,63 +1,54 @@
-# ArrayMate Build Script (PowerShell)
-# Builds the executable and creates a release package
+# ArrayMate build launcher for Windows PowerShell.
 
-Write-Host "🚀 ArrayMate Build Script" -ForegroundColor Green
-Write-Host "=========================" -ForegroundColor Green
+$ErrorActionPreference = "Stop"
 
-# Check if Python is installed
+Write-Host "ArrayMate build" -ForegroundColor Green
+Write-Host "===============" -ForegroundColor Green
+
 try {
     $pythonVersion = python --version 2>&1
-    Write-Host "✓ Python found: $pythonVersion" -ForegroundColor Green
+    Write-Host "Python found: $pythonVersion" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Error: Python is not installed or not in PATH" -ForegroundColor Red
+    Write-Host "Error: Python is not installed or not in PATH." -ForegroundColor Red
     Read-Host "Press Enter to exit"
     exit 1
 }
 
-# Check if required files exist
-$requiredFiles = @("app.py", "requirements.txt", "sample_data.json")
+$requiredFiles = @(
+    "app.py",
+    "ArrayMate.spec",
+    "version.txt",
+    "icon.ico",
+    "assets\arraymate_icon.png",
+    "assets\arraymate_tray_icon.png"
+)
+
 foreach ($file in $requiredFiles) {
-    if (Test-Path $file) {
-        Write-Host "✓ Found $file" -ForegroundColor Green
-    } else {
-        Write-Host "❌ Missing required file: $file" -ForegroundColor Red
+    if (-not (Test-Path $file)) {
+        Write-Host "Missing required file: $file" -ForegroundColor Red
         Read-Host "Press Enter to exit"
         exit 1
     }
 }
 
-Write-Host "`nStarting build process..." -ForegroundColor Yellow
+python build_exe.py portable-python
+$exitCode = $LASTEXITCODE
 
-# Run the build script
-try {
-    python build_exe.py
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "`n🎉 Build completed successfully!" -ForegroundColor Green
-        
-        # Check if executable was created
-        if (Test-Path "release\ArrayMate.exe") {
-            $fileSize = (Get-Item "release\ArrayMate.exe").Length
-            $fileSizeMB = [math]::Round($fileSize / 1MB, 2)
-            Write-Host "✓ Executable created: release\ArrayMate.exe ($fileSizeMB MB)" -ForegroundColor Green
-        }
-        
-        # Check if zip was created
-        $zipFiles = Get-ChildItem "ArrayMate-v*.zip" -ErrorAction SilentlyContinue
-        if ($zipFiles) {
-            Write-Host "✓ Release package created: $($zipFiles[0].Name)" -ForegroundColor Green
-        }
-        
-        Write-Host "`n📋 Next steps:" -ForegroundColor Cyan
-        Write-Host "1. Test the executable: release\ArrayMate.exe"
-        Write-Host "2. Upload the zip file to GitHub releases"
-        Write-Host "3. Tag the release with the current version"
-        
-    } else {
-        Write-Host "`n❌ Build failed with exit code $LASTEXITCODE" -ForegroundColor Red
+if ($exitCode -eq 0) {
+    Write-Host ""
+    Write-Host "Build completed successfully." -ForegroundColor Green
+    if (Test-Path "release\ArrayMate\Run ArrayMate.bat") {
+        Write-Host "Launcher: release\ArrayMate\Run ArrayMate.bat" -ForegroundColor Green
     }
-} catch {
-    Write-Host "`n❌ Error during build: $_" -ForegroundColor Red
+    $zipFiles = Get-ChildItem "ArrayMate-v*-Windows-*.zip" -ErrorAction SilentlyContinue
+    if ($zipFiles) {
+        Write-Host "Release package: $($zipFiles[0].Name)" -ForegroundColor Green
+    }
+} else {
+    Write-Host ""
+    Write-Host "Build failed with exit code $exitCode." -ForegroundColor Red
 }
 
-Write-Host "`nPress any key to exit..."
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+Write-Host ""
+Read-Host "Press Enter to exit"
+exit $exitCode

@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import json
 import os
+import csv
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, Union
 
-import pandas as pd
+from openpyxl import Workbook
 
 
 JsonData = Union[dict[str, Any], list[Any]]
@@ -77,6 +78,17 @@ class TablePreview:
     columns: tuple[ColumnPreview, ...]
     preview_rows: tuple[dict[str, Any], ...]
     warnings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class TableData:
+    """Rows and columns prepared for export."""
+
+    rows: tuple[dict[str, Any], ...]
+    columns: tuple[str, ...]
+
+    def __len__(self) -> int:
+        return len(self.rows)
 
 
 @dataclass(frozen=True)
@@ -826,8 +838,8 @@ def build_output_path(output_folder: str, filename: str, extension: str) -> str:
     return os.path.join(output_folder, clean_filename)
 
 
-def records_to_dataframe(array_data: Optional[list[Any]]) -> pd.DataFrame:
-    """Convert a JSON array of objects to a DataFrame."""
+def records_to_dataframe(array_data: Optional[list[Any]]) -> TableData:
+    """Convert a JSON array of objects to exportable table data."""
     if array_data is None:
         raise ArrayMateCoreError("Selected array is invalid")
 
@@ -837,23 +849,24 @@ def records_to_dataframe(array_data: Optional[list[Any]]) -> pd.DataFrame:
     if not isinstance(array_data[0], dict):
         raise ArrayMateCoreError("Array must contain objects with key-value pairs")
 
-    return pd.DataFrame(array_data)
+    rows = tuple(dict(row) for row in array_data)
+    return TableData(rows=rows, columns=tuple(_column_names(rows)))
 
 
-def write_array_to_file(array_data: Optional[list[Any]], file_path: str, output_format: OutputFormat) -> pd.DataFrame:
+def write_array_to_file(array_data: Optional[list[Any]], file_path: str, output_format: OutputFormat) -> TableData:
     """
-    Write array data to disk and return the DataFrame that was written.
+    Write array data to disk and return the table data that was written.
 
-    Returning the DataFrame keeps the UI able to report rows and columns without
-    duplicating conversion logic.
+    Returning table metadata keeps the UI able to report rows and columns without
+    duplicating conversion logic or depending on pandas at runtime.
     """
-    dataframe = records_to_dataframe(array_data)
+    table = records_to_dataframe(array_data)
     output_path = Path(file_path)
 
     if output_format.label == "Excel":
-        dataframe.to_excel(output_path, index=False)
+        _write_excel(table, output_path)
     elif output_format.label == "CSV":
-        dataframe.to_csv(output_path, index=False)
+        _write_csv(table, output_path)
     elif output_format.label == "JSON":
         output_path.write_text(
             json.dumps(_json_export_value(array_data), ensure_ascii=False, indent=2),
@@ -862,7 +875,41 @@ def write_array_to_file(array_data: Optional[list[Any]], file_path: str, output_
     else:
         raise ArrayMateCoreError(f"Unsupported output format: {output_format.label}")
 
-    return dataframe
+    return table
+
+
+def _write_excel(table: TableData, output_path: Path) -> None:
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Data"
+    worksheet.append(list(table.columns))
+    for row in table.rows:
+        worksheet.append([_spreadsheet_export_value(row.get(column)) for column in table.columns])
+    workbook.save(output_path)
+
+
+def _write_csv(table: TableData, output_path: Path) -> None:
+    with output_path.open("w", encoding="utf-8", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(table.columns)
+        for row in table.rows:
+            writer.writerow([_csv_export_value(row.get(column)) for column in table.columns])
+
+
+def _spreadsheet_export_value(value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, (dict, list)):
+        return json.dumps(_json_export_value(value), ensure_ascii=False)
+    return value
+
+
+def _csv_export_value(value: Any) -> Any:
+    if value is None:
+        return ""
+    return _spreadsheet_export_value(value)
 
 
 def _json_export_value(value: Any) -> Any:

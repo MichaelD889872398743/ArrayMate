@@ -9,9 +9,11 @@ import subprocess
 import sys
 import webbrowser
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractScrollArea,
@@ -27,9 +29,11 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QPushButton,
     QSizePolicy,
+    QSystemTrayIcon,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -52,6 +56,14 @@ from arraymate.core import (
 from arraymate.service import ArrayMateService, LoadResult
 
 
+def resource_path(*parts: str) -> Path:
+    """Resolve files both from source checkout and a PyInstaller bundle."""
+    bundle_root = getattr(sys, "_MEIPASS", None)
+    if bundle_root:
+        return Path(bundle_root).joinpath(*parts)
+    return Path(__file__).resolve().parent.parent.joinpath(*parts)
+
+
 class ArrayMateWindow(QMainWindow):
     """Modern Qt desktop UI for converting JSON arrays to table files."""
 
@@ -63,6 +75,7 @@ class ArrayMateWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("ArrayMate")
         self.resize(1180, 720)
+        self.tray_icon: Optional[QSystemTrayIcon] = None
 
         self.service = ArrayMateService()
         self.candidate_by_path: dict[str, ArrayCandidate] = {}
@@ -74,12 +87,58 @@ class ArrayMateWindow(QMainWindow):
         self.suppress_text_auto_parse = False
 
         self._build_ui()
+        self._apply_app_icons()
         self.json_parse_timer = QTimer(self)
         self.json_parse_timer.setSingleShot(True)
         self.json_parse_timer.setInterval(700)
         self.json_parse_timer.timeout.connect(self._auto_load_json_from_text)
         self.json_text.textChanged.connect(self._schedule_json_auto_parse)
         self._apply_styles()
+
+    def _apply_app_icons(self) -> None:
+        app_icon = QIcon(str(resource_path("assets", "arraymate_icon.png")))
+        if app_icon.isNull():
+            app_icon = QIcon(str(resource_path("icon.ico")))
+        if not app_icon.isNull():
+            self.setWindowIcon(app_icon)
+            app = QApplication.instance()
+            if app is not None:
+                app.setWindowIcon(app_icon)
+        self._setup_tray_icon(app_icon)
+
+    def _setup_tray_icon(self, fallback_icon: QIcon) -> None:
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+
+        tray_qicon = QIcon(str(resource_path("assets", "arraymate_tray_icon.png")))
+        if tray_qicon.isNull():
+            tray_qicon = fallback_icon
+        if tray_qicon.isNull():
+            return
+
+        tray_menu = QMenu(self)
+        show_action = QAction("Show ArrayMate", self)
+        show_action.triggered.connect(self._show_from_tray)
+        tray_menu.addAction(show_action)
+        tray_menu.addSeparator()
+        quit_action = QAction("Quit", self)
+        quit_action.triggered.connect(QApplication.instance().quit)
+        tray_menu.addAction(quit_action)
+
+        self.tray_icon = QSystemTrayIcon(tray_qicon, self)
+        self.tray_icon.setToolTip("ArrayMate")
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.activated.connect(self._on_tray_icon_activated)
+        self.tray_icon.show()
+
+    def _on_tray_icon_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason in (QSystemTrayIcon.ActivationReason.Trigger, QSystemTrayIcon.ActivationReason.DoubleClick):
+            self._show_from_tray()
+
+    def _show_from_tray(self) -> None:
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
 
     def _build_ui(self) -> None:
         root = QWidget()

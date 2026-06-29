@@ -1,6 +1,8 @@
 # ArrayMate
 
-A GUI application that converts JSON arrays to multiple formats (Excel, CSV, JSON). The application allows users to select a JSON file or paste JSON directly, choose which array to convert, and save the result in various formats with keys as columns.
+ArrayMate is a local desktop app for turning JSON arrays into table files. It is built for the common "I got API/report data as JSON, but need to send someone an Excel or CSV file" workflow.
+
+It can load JSON from a file or from pasted text, detect table-like arrays, preview the selected data, apply quick transforms, and export the result.
 
 **Author:** Michael Dehne  
 **License:** MIT License  
@@ -8,172 +10,160 @@ A GUI application that converts JSON arrays to multiple formats (Excel, CSV, JSO
 
 ## Features
 
-- **Multiple JSON Sources**: Browse JSON files OR paste JSON directly (e.g., from Postman, API responses)
-- **Array Detection**: Automatically finds all arrays in the JSON structure
-- **Array Selection**: Choose which array to convert
-- **Multiple Output Formats**: Export to Excel (.xlsx), CSV (.csv), or JSON (.json)
-- **Auto-Open**: Automatically opens converted files or shows file location
-- **Modern Desktop GUI**: PySide6/Qt interface with no-install executable builds
+- **Local desktop app**: Runs on your machine; no web upload step.
+- **No-install portable release**: Built as a portable Windows app folder.
+- **File or paste input**: Load a JSON file, or paste JSON directly from tools like Postman.
+- **Automatic array detection**: Finds top-level and nested arrays.
+- **Table preview**: Shows detected columns and sample rows before export.
+- **Nested array handling**: Select nested candidates such as `orders[*].items`, include parent metadata, or unfold nested arrays from a parent table.
+- **Transform options**: Stringify all values, stringify spreadsheet formulas, set per-column types, and perform per-column find/replace.
+- **Exports**: Excel `.xlsx`, CSV `.csv`, and JSON `.json`.
+- **Modern UI**: PySide6/Qt interface with app and tray icons.
 
-## Installation
+## Download
 
-### Option 1: Download Executable (Recommended)
-1. Go to the [Releases](https://github.com/MichaelD889872398743/ArrayMate/releases) page
-2. Download the latest `ArrayMate-v*.zip` file
-3. Extract the zip file
-4. Run `ArrayMate.exe` (no installation required)
+1. Go to the [Releases](https://github.com/MichaelD889872398743/ArrayMate/releases) page.
+2. Download the latest `ArrayMate-v*-Windows.zip`.
+3. Extract the zip file.
+4. Run `ArrayMate/ArrayMate.exe`.
 
-### Windows Defender / SmartScreen Notice
-This app is unsigned and may show a "Windows protected your PC" warning when first run.
-- Click More info
-- Then click Run anyway
-This is expected behavior for new, unsigned .exe files.
-The executable is built from open-source code available [here](https://github.com/MichaelD889872398743/ArrayMate/), so you can inspect or build it yourself.
+### Windows SmartScreen
 
-### Option 2: Run from Source
-1. Make sure you have Python 3.7+ installed
-2. Install the required dependencies:
+The app is currently unsigned, so Windows may show a "Windows protected your PC" warning the first time you run it.
+
+Click **More info**, then **Run anyway**.
+
+The executable is built from the source code in this repository, so you can inspect or build it yourself.
+
+## Run From Source
+
+Use Python 3.10 or newer.
 
 ```bash
 pip install -r requirements.txt
-```
-
-## Usage
-
-### From Executable
-1. Double-click `ArrayMate.exe` to start the application
-
-### From Source
-1. Run the script:
-```bash
 python app.py
 ```
 
-2. **Step 1**: Choose JSON source:
-   - **Option A**: Click "Browse" to select a JSON file; it parses immediately
-   - **Option B**: Paste JSON directly in the inline JSON input and click "Load JSON"
-3. **Step 2**: Choose which array to convert from the dropdown
-4. **Step 3**: Set the output location:
-   - Select output format (Excel, CSV, or JSON)
-   - Click "Browse" to select the save folder
-   - Enter a filename (auto-generated based on selected array)
-5. **Step 4**: Click "Convert to File" to process the conversion
-6. **Auto-Open**: Files automatically open or show file location
+## Basic Workflow
 
-## Requirements
+1. Start ArrayMate.
+2. Paste JSON into the JSON input, or click **Load JSON File**.
+3. Pick an array from the parsed structure pane.
+4. Review the table preview.
+5. Optional: choose transform options.
+6. Pick the output format, file name, and save folder.
+7. Click **Convert to File**.
 
-### For Executable
-- Windows 10 or later
-- No additional software required
+Loaded JSON files are copied into the JSON input. After that, pasted JSON and file-based JSON use the same parse path.
 
-### For Source Code
-- Python 3.7+
-- pandas
-- openpyxl
-- PySide6
+## Nested Arrays
 
-## How it Works
+ArrayMate lists arrays by path. For repeated nested arrays it groups compatible paths with a wildcard:
 
-1. **JSON Input**: Load JSON from file or paste directly from clipboard
-2. **Array Detection**: It recursively searches for all arrays in the JSON structure
-3. **Array Selection**: Users can choose which array to convert
-4. **Format Selection**: Choose output format (Excel, CSV, or JSON)
-5. **Output Configuration**: Users set the save folder and filename before conversion
-6. **Data Conversion**: The selected array is converted to a pandas DataFrame
-7. **File Export**: Save in the chosen format with proper formatting
-8. **Auto-Open**: Files automatically open or show file location
+- `users`: a top-level array.
+- `orders`: a top-level order table.
+- `orders[*].items`: all `items` arrays found inside the `orders` records.
+- `orders[*].items[*].descriptions`: nested arrays below order items.
 
-## Example JSON Structure
+For nested arrays, you can export the nested table on its own or include parent metadata where useful. For parent tables, the unfold option lets you expand a nested child array into the current preview.
 
-The script can handle various JSON structures:
+## Example
 
-```json
-{
-  "users": [
-    {"name": "John", "age": 30, "city": "New York"},
-    {"name": "Jane", "age": 25, "city": "Los Angeles"}
-  ],
-  "products": [
-    {"id": 1, "name": "Product A", "price": 100},
-    {"id": 2, "name": "Product B", "price": 200}
-  ]
-}
-```
-
-In this example, the script would detect two arrays: "users" and "products", and you could choose which one to convert to Excel.
-
-## Selecting Arrays for Export
-
-When you load a JSON file, **ArrayMate** scans the entire structure and lists all arrays it finds, including those nested inside objects or other arrays.  
-The array paths use a notation like:
-
-- `orders` — a top-level array called "orders"
-- `orders[0].items` — the "items" array inside the first object of the "orders" array
-- `orders[1].items` — the "items" array inside the second object of the "orders" array
-
-This notation allows you to select **any array**, even if it is deeply nested.  
-The numbers in brackets (e.g., `[0]`, `[1]`) refer to the index of the object in the parent array.
-
-**Example:**  
-If your JSON looks like this:
 ```json
 {
   "orders": [
-    { "id": 1, "items": [ ... ] },
-    { "id": 2, "items": [ ... ] }
+    {
+      "order_id": "ORD001",
+      "status": "Completed",
+      "items": [
+        { "product_id": "P001", "quantity": 1, "price": 999.99 },
+        { "product_id": "P002", "quantity": 1, "price": 29.99 }
+      ]
+    }
   ]
 }
 ```
-You will see options like:
-- `orders` (the full list of orders)
-- `orders[0].items` (the items for the first order)
-- `orders[1].items` (the items for the second order)
 
-Select the array path you want to export, and ArrayMate will convert just that array to your chosen format.
+ArrayMate can detect both:
 
-> **Note:**  
-> This approach is useful for advanced users who want to extract specific nested arrays. If you want to merge or flatten arrays across multiple objects, consider exporting the top-level array or use the "merge array" feature (coming soon).
+- `orders`
+- `orders[*].items`
+
+If you export `orders[*].items` with parent metadata, the item rows can include information from the order they came from.
+
+## Transform Options
+
+Quick options:
+
+- **Stringify everything**: Export every value as text.
+- **Stringify formulas**: Treat spreadsheet formula-looking values as text.
+- **Include parent metadata**: Add parent object fields to nested array rows where supported.
+
+Advanced column actions:
+
+- Set a selected column to text, number, integer, or boolean.
+- Replace text inside one selected column.
+
+These transforms are applied to the exported data and preview.
+
+## Building Portable Releases
+
+Install runtime and build dependencies:
+
+```bash
+pip install -r requirements.txt
+pip install -r requirements-build.txt
+```
+
+For managed Windows laptops, build the portable Python package:
+
+```bash
+build.bat
+.\build.ps1
+python build_exe.py portable-python
+```
+
+This creates `release/ArrayMate/Run ArrayMate.bat`. The launcher starts ArrayMate through the bundled `pythonw.exe` runtime instead of a generated `ArrayMate.exe`.
+
+This is intentional. Some company devices block unsigned generated executables through Defender Exploit Guard or similar policy. Running through a trusted Python runtime can be easier to allow while still keeping the app portable and installation-free.
+
+There is also a PyInstaller target:
+
+```bash
+python build_exe.py pyinstaller
+```
+
+The PyInstaller build uses `ArrayMate.spec` as the canonical configuration. It expects these files to exist:
+
+- `app.py`
+- `ArrayMate.spec`
+- `version.txt`
+- `icon.ico`
+- `assets/arraymate_icon.png`
+- `assets/arraymate_tray_icon.png`
+
+Successful builds place the portable app in `release/ArrayMate/` and create `ArrayMate-v*-Windows-*.zip`.
+
+## Project Structure
+
+- `app.py`: Application entry point.
+- `arraymate/core.py`: JSON discovery, table extraction, transforms, and export logic.
+- `arraymate/service.py`: UI-independent workflow layer.
+- `arraymate/qt_desktop.py`: PySide6 desktop UI.
+- `tests/`: Unit tests for core and service behavior.
+- `assets/`: UI mockup and icon assets.
 
 ## Notes
 
-- The script only converts arrays that contain objects (dictionaries)
-- Each object's keys become columns in the Excel file
-- The script supports nested JSON structures
-- Excel files are saved with .xlsx extension
+- The main use case is converting arrays of objects into tables.
+- Object keys become table columns.
+- Empty arrays can be detected, but they do not produce table rows.
+- Spreadsheet formula protection is optional because some users intentionally export formula values.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Building from Source
-
-If you want to build your own executable:
-
-### Quick Build (Windows)
-```bash
-# Option 1: Double-click
-build.bat
-
-# Option 2: PowerShell
-.\build.ps1
-
-# Option 3: Python script
-python build_exe.py
-```
-
-### Manual Build
-1. Install PyInstaller: `pip install pyinstaller`
-2. Run: `python build_exe.py`
-3. Check the `release/` folder for the executable
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## Author
 
 **Michael Dehne** - [GitHub Profile](https://github.com/MichaelD889872398743)
-
----
-
-*If you find this tool useful, please consider giving it a star on GitHub!*

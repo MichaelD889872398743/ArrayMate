@@ -18,7 +18,7 @@ setup(
     description="A GUI application that converts JSON arrays to multiple formats (Excel, CSV, JSON)",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/MichaelD889872398743/array-mate",
+    url="https://github.com/MichaelD889872398743/ArrayMate",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -27,24 +27,22 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Utilities",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.10",
     install_requires=requirements,
     entry_points={
         "console_scripts": [
             "array-mate=arraymate.qt_desktop:main",
         ],
     },
-    keywords="json, excel, csv, converter, gui, qt, pyside6, pandas",
+    keywords="json, excel, csv, converter, gui, qt, pyside6",
     project_urls={
-        "Bug Reports": "https://github.com/MichaelD889872398743/array-mate/issues",
-        "Source": "https://github.com/MichaelD889872398743/array-mate",
+        "Bug Reports": "https://github.com/MichaelD889872398743/ArrayMate/issues",
+        "Source": "https://github.com/MichaelD889872398743/ArrayMate",
     },
 )

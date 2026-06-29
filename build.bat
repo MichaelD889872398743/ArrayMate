@@ -1,19 +1,26 @@
 @echo off
-echo Building ArrayMate executable...
+setlocal
+
+echo Building ArrayMate portable Python package...
 echo.
 
-REM Check if Python is installed
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo Error: Python is not installed or not in PATH
+    echo Error: Python is not installed or not in PATH.
     pause
     exit /b 1
 )
 
-REM Run the build script
-python build_exe.py
+python build_exe.py portable-python
+set BUILD_EXIT_CODE=%ERRORLEVEL%
 
 echo.
-echo Build process completed!
-echo Check the 'release' folder for the executable.
+if %BUILD_EXIT_CODE% EQU 0 (
+    echo Build process completed.
+    echo Run release\ArrayMate\Run ArrayMate.bat.
+) else (
+    echo Build process failed with exit code %BUILD_EXIT_CODE%.
+)
+
 pause
+exit /b %BUILD_EXIT_CODE%

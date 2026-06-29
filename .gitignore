@@ -11,6 +11,8 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+release/
+ArrayMate-v*-Windows*.zip
 downloads/
 eggs/
 .eggs/
@@ -32,6 +34,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+!ArrayMate.spec
 
 # Installer logs
 pip-log.txt
@@ -137,3 +140,5 @@ dmypy.json
 # OS
 .DS_Store
 Thumbs.db
+
+release/ArrayMate.exe
