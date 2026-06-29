@@ -6,7 +6,7 @@ It can load JSON from a file or from pasted text, detect table-like arrays, prev
 
 **Author:** Michael Dehne  
 **License:** MIT License  
-**Version:** 1.0.10
+**Version:** 2.0.0
 
 ## Features
 

@@ -7,6 +7,19 @@ and the versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [v2.0.0] - 2026-06-29
+
+### Added
+- Rebuilt the desktop UI with PySide6/Qt.
+- Added portable Python release packaging for managed Windows devices.
+- Added GitHub Actions release automation for version tags.
+- Added nested array grouping, unfolding, parent metadata, table preview, and transform options.
+- Added app/tray icon assets.
+
+### Changed
+- Reworked export internals to avoid a pandas runtime dependency.
+- Updated build outputs so generated release zips are ignored by git and attached through GitHub Releases.
+
 ## [v1.0.10] - 2025-08-11
 
 ### Added
